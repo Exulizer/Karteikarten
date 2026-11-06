@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kartenbox</title>
+<meta name="theme-color" content="#c9a676">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Crect x=%226%22 y=%229%22 width=%2230%22 height=%2222%22 rx=%223%22 transform=%22rotate%28-9 21 20%29%22 fill=%22%23f2dd7a%22 stroke=%22%232a2619%22 stroke-width=%222%22/%3E%3Cg transform=%22rotate%287 27 28%29%22%3E%3Crect x=%2211%22 y=%2215%22 width=%2231%22 height=%2223%22 rx=%223%22 fill=%22%23fbee9a%22 stroke=%22%232a2619%22 stroke-width=%222%22/%3E%3Cline x1=%2212%22 y1=%2222%22 x2=%2241%22 y2=%2222%22 stroke=%22%23c2402f%22 stroke-width=%222%22/%3E%3Cline x1=%2212%22 y1=%2228%22 x2=%2241%22 y2=%2228%22 stroke=%22%235b86c9%22 stroke-width=%221.4%22/%3E%3Cline x1=%2212%22 y1=%2233%22 x2=%2241%22 y2=%2233%22 stroke=%22%235b86c9%22 stroke-width=%221.4%22/%3E%3C/g%3E%3C/svg%3E">
+<script src="einstellungen.js"></script>
+<script src="karteikarten.js"></script>
+<link rel="stylesheet" href="kartenbox.css">
+</head>
+<body>
+<div class="desk" aria-hidden="true">
+  <svg class="obj pen" viewBox="0 0 28 210"><rect x="10" y="3" width="8" height="24" rx="3" fill="#c9ced6"/><rect x="7" y="22" width="14" height="132" rx="7" fill="#2b4a9a"/><rect x="10" y="30" width="3" height="118" rx="1.5" fill="#fff" opacity=".3"/><path d="M21 34h2.5v56q0 3-3 3H21z" fill="#aab2bd"/><rect x="7" y="150" width="14" height="24" fill="#1d2f66"/><path d="M7 174h14l-5 22h-4z" fill="#1d2f66"/><path d="M12 196h4l-1.4 9h-1.2z" fill="#7d838c"/></svg>
+  <svg class="obj marker" viewBox="0 0 34 150"><rect x="2" y="6" width="30" height="46" rx="6" fill="#ff9ec0"/><rect x="26" y="12" width="3" height="30" rx="1.5" fill="#fff" opacity=".45"/><rect x="5" y="46" width="24" height="86" rx="5" fill="#f06fa0"/><rect x="9" y="74" width="16" height="32" fill="#fff" opacity=".6"/><path d="M8 130h18l-4 14H12z" fill="#c2185b"/></svg>
+  <svg class="obj pencil" viewBox="0 0 26 220"><rect x="5" y="3" width="16" height="19" rx="3" fill="#e98aa0"/><rect x="5" y="20" width="16" height="17" fill="#b9bec6"/><path d="M5 25h16M5 31h16" stroke="#8f959e" stroke-width="1.2"/><rect x="5" y="37" width="16" height="148" fill="#f2c230"/><rect x="5" y="37" width="5" height="148" fill="#d9a519"/><rect x="16" y="37" width="5" height="148" fill="#f8de7a"/><path d="M5 185h16l-8 29z" fill="#e8c79a"/><path d="M10.4 203h5.2l-2.6 11z" fill="#2c2c2c"/></svg>
+</div>
+<div class="wrap">
+  <header>
+    <h1><button class="brand" id="homeBtn" type="button" aria-label="Kartenbox, zur Startseite" title="Zur Startseite"><svg class="logo" viewBox="0 0 48 48" width="40" height="40" aria-hidden="true"><g class="lb"><rect x="6" y="9" width="30" height="22" rx="3" transform="rotate(-9 21 20)" fill="#f2dd7a" stroke="#2a2619" stroke-width="2"/></g><g class="lf"><g transform="rotate(7 27 28)"><rect x="11" y="15" width="31" height="23" rx="3" fill="#fbee9a" stroke="#2a2619" stroke-width="2"/><line x1="12" y1="22" x2="41" y2="22" stroke="#c2402f" stroke-width="2"/><line x1="12" y1="28" x2="41" y2="28" stroke="#5b86c9" stroke-width="1.4"/><line x1="12" y1="33" x2="41" y2="33" stroke="#5b86c9" stroke-width="1.4"/></g></g></svg><b>Kartenbox</b></button></h1>
+    <div class="hright">
+      <button class="switch" id="demoSw" type="button" role="switch" aria-checked="false" title="Demo-Karten ein- oder ausschalten"><i></i>Demo</button>
+      <button class="pill inst" id="installBtn" type="button" hidden aria-label="App installieren"><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M10 3v9m0 0-3.5-3.5M10 12l3.5-3.5M4 16h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="lbl">Installieren</span></button>
+      <button class="iconbtn" id="themeBtn" type="button" aria-label="Dunkles Design"></button>
+    </div>
+  </header>
+
+  <!-- Icons der Navigation: Font Awesome Free, CC BY 4.0, https://fontawesome.com/license/free -->
+  <nav class="tabs" role="tablist">
+    <span class="tab-hov" id="tabHov" aria-hidden="true"></span>
+    <span class="tab-ind" id="tabInd" aria-hidden="true"></span>
+    <button class="tab" role="tab" data-view="study" aria-selected="true"><svg class="ti" viewBox="0 0 576 512" aria-hidden="true" focusable="false"><path d="M48 195.8l209.2 86.1c9.8 4 20.2 6.1 30.8 6.1s21-2.1 30.8-6.1l242.4-99.8c9-3.7 14.8-12.4 14.8-22.1s-5.8-18.4-14.8-22.1L318.8 38.1C309 34.1 298.6 32 288 32s-21 2.1-30.8 6.1L14.8 137.9C5.8 141.6 0 150.3 0 160L0 456c0 13.3 10.7 24 24 24s24-10.7 24-24l0-260.2zm48 71.7L96 384c0 53 86 96 192 96s192-43 192-96l0-116.6-142.9 58.9c-15.6 6.4-32.2 9.7-49.1 9.7s-33.5-3.3-49.1-9.7L96 267.4z"/></svg><span>Lernen</span></button>
+    <button class="tab" role="tab" data-view="add" aria-selected="false"><svg class="ti" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><path d="M36.4 353.2c4.1-14.6 11.8-27.9 22.6-38.7l181.2-181.2 33.9-33.9c16.6 16.6 51.3 51.3 104 104l33.9 33.9-33.9 33.9-181.2 181.2c-10.7 10.7-24.1 18.5-38.7 22.6L30.4 510.6c-8.3 2.3-17.3 0-23.4-6.2S-1.4 489.3 .9 481L36.4 353.2zm55.6-3.7c-4.4 4.7-7.6 10.4-9.3 16.6l-24.1 86.9 86.9-24.1c6.4-1.8 12.2-5.1 17-9.7L91.9 349.5zm354-146.1c-16.6-16.6-51.3-51.3-104-104L308 65.5C334.5 39 349.4 24.1 352.9 20.6 366.4 7 384.8-.6 404-.6S441.6 7 455.1 20.6l35.7 35.7C504.4 69.9 512 88.3 512 107.4s-7.6 37.6-21.2 51.1c-3.5 3.5-18.4 18.4-44.9 44.9z"/></svg><span>Neu</span></button>
+    <button class="tab" role="tab" data-view="all" aria-selected="false"><svg class="ti" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><path d="M232.5 5.2c14.9-6.9 32.1-6.9 47 0l218.6 101c8.5 3.9 13.9 12.4 13.9 21.8s-5.4 17.9-13.9 21.8l-218.6 101c-14.9 6.9-32.1 6.9-47 0L13.9 149.8C5.4 145.8 0 137.3 0 128s5.4-17.9 13.9-21.8L232.5 5.2zM48.1 218.4l164.3 75.9c27.7 12.8 59.6 12.8 87.3 0l164.3-75.9 34.1 15.8c8.5 3.9 13.9 12.4 13.9 21.8s-5.4 17.9-13.9 21.8l-218.6 101c-14.9 6.9-32.1 6.9-47 0L13.9 277.8C5.4 273.8 0 265.3 0 256s5.4-17.9 13.9-21.8l34.1-15.8zM13.9 362.2l34.1-15.8 164.3 75.9c27.7 12.8 59.6 12.8 87.3 0l164.3-75.9 34.1 15.8c8.5 3.9 13.9 12.4 13.9 21.8s-5.4 17.9-13.9 21.8l-218.6 101c-14.9 6.9-32.1 6.9-47 0L13.9 405.8C5.4 401.8 0 393.3 0 384s5.4-17.9 13.9-21.8z"/></svg><span>Karten</span></button>
+    <button class="tab" role="tab" data-view="cats" aria-selected="false"><svg class="ti" viewBox="0 0 576 512" aria-hidden="true" focusable="false"><path d="M56 225.6L32.4 296.2 32.4 96c0-35.3 28.7-64 64-64l138.7 0c13.8 0 27.3 4.5 38.4 12.8l38.4 28.8c5.5 4.2 12.3 6.4 19.2 6.4l117.3 0c35.3 0 64 28.7 64 64l0 16-365.4 0c-41.3 0-78 26.4-91.1 65.6zM477.8 448L99 448c-32.8 0-55.9-32.1-45.5-63.2l48-144C108 221.2 126.4 208 147 208l378.8 0c32.8 0 55.9 32.1 45.5 63.2l-48 144c-6.5 19.6-24.9 32.8-45.5 32.8z"/></svg><span>Rubriken</span></button>
+    <button class="tab" role="tab" data-view="opts" aria-selected="false"><svg class="ti" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><path d="M32 64C14.3 64 0 78.3 0 96s14.3 32 32 32l86.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48L480 128c17.7 0 32-14.3 32-32s-14.3-32-32-32L265.3 64C253 35.7 224.8 16 192 16s-61 19.7-73.3 48L32 64zm0 160c-17.7 0-32 14.3-32 32s14.3 32 32 32l246.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48l54.7 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-54.7 0c-12.3-28.3-40.5-48-73.3-48s-61 19.7-73.3 48L32 224zm0 160c-17.7 0-32 14.3-32 32s14.3 32 32 32l54.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48L480 448c17.7 0 32-14.3 32-32s-14.3-32-32-32l-246.7 0c-12.3-28.3-40.5-48-73.3-48s-61 19.7-73.3 48L32 384z"/></svg><span>Optionen</span></button>
+    <button class="tab" role="tab" data-view="help" aria-selected="false"><svg class="ti" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><path d="M256 512a256 256 0 1 0 0-512 256 256 0 1 0 0 512zm0-336c-17.7 0-32 14.3-32 32 0 13.3-10.7 24-24 24s-24-10.7-24-24c0-44.2 35.8-80 80-80s80 35.8 80 80c0 47.2-36 67.2-56 74.5l0 3.8c0 13.3-10.7 24-24 24s-24-10.7-24-24l0-8.1c0-20.5 14.8-35.2 30.1-40.2 6.4-2.1 13.2-5.5 18.2-10.3 4.3-4.2 7.7-10 7.7-19.6 0-17.7-14.3-32-32-32zM224 368a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z"/></svg><span>Hilfe</span></button>
+  </nav>
+
+
+  <div class="banner" id="banner" hidden>
+    <span id="bannerText"></span>
+    <button class="btn primary" id="bannerBtn" type="button">Erlauben</button>
+  </div>
+
+  <!-- Lernen -->
+  <section class="view active" id="view-study">
+    <div id="filtSent" aria-hidden="true"></div>
+    <div class="filters">
+      <div class="chips seg" id="modeChips" aria-label="Welche Karten"></div>
+      <div class="chips" id="studyChips" aria-label="Rubrik"></div>
+    </div>
+    <div class="stats" id="statsBar" hidden></div>
+    <div id="studyEmpty" class="empty" hidden>
+      <span id="emptyMsg">In dieser Rubrik gibt es noch keine Karten.</span><br><br>
+      <button class="btn primary" type="button" data-goto="add">Karte anlegen</button>
+      <button class="btn" type="button" id="demoBtn2">Demo ansehen</button>
+      <button class="btn primary" type="button" id="modeAllBtn" hidden>Alle Karten üben</button>
+    </div>
+    <div class="stage" id="stage" hidden>
+      <div class="slot" id="slot">Wähle unten eine Karte</div>
+      <div class="pile" id="pile"></div>
+      <button class="pile shelf" id="shelf" type="button" title="Ablage zurück in den Fächer" hidden></button>
+      <div class="endbox" id="endBox" hidden>
+        <p id="endMsg">Alle Karten geschafft.</p>
+        <button class="btn primary" id="newRound" type="button">Neue Runde</button>
+      </div>
+    </div>
+    <div class="dock" id="dock" hidden>
+    <ol class="steps" id="steps" hidden>
+      <li><b>1</b>Karte wählen</li>
+      <li><b>2</b>Lösung ansehen</li>
+      <li><b>3</b>Gewusst oder Nochmal</li>
+    </ol>
+    <div class="controls" id="studyControls" hidden>
+      <div class="lcd" id="lcd" aria-hidden="true"><i>KARTEN</i><b id="lcdN">0/0</b></div>
+      <button class="btn" id="flipBtn" type="button" disabled>Lösung zeigen</button>
+      <button class="btn primary" id="nextBtn" type="button" title="Legt die Karte unten im Stapel ab" disabled>Weiter</button>
+      <button class="btn" id="badBtn" type="button" hidden>Nochmal</button>
+      <button class="btn primary" id="okBtn" type="button" hidden>Gewusst</button>
+      <button class="btn" id="shuffleBtn" type="button">Mischen</button>
+    </div>
+    <p class="keys" id="keysHint" hidden><span><kbd>Leertaste</kbd> drehen</span> <span><kbd>←</kbd> Nochmal</span> <span><kbd>→</kbd> Gewusst</span> <span><kbd>P</kbd> anheften</span> <span><kbd>Esc</kbd> zurücklegen</span></p>
+    </div>
+  </section>
+
+  <!-- Neue Karte -->
+  <section class="view" id="view-add">
+    <p class="lbl">Rubrik</p>
+    <div class="chips" id="addChips"></div>
+    <div class="progress"><i id="p1" class="on"></i><i id="p2"></i></div>
+    <div id="step1">
+      <p class="step-label">1. Frage</p>
+      <textarea id="newQ" placeholder="Deine Frage"></textarea>
+      <div class="row"><button class="btn primary" id="toStep2" type="button">Weiter zur Lösung</button></div>
+    </div>
+    <div id="step2" hidden>
+      <p class="step-label">2. Lösung</p>
+      <textarea id="newA" placeholder="Die Lösung"></textarea>
+      <div class="row">
+        <button class="btn" id="backStep1" type="button">Zurück</button>
+        <button class="btn primary" id="saveCard" type="button">Karte speichern</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Hilfe -->
+  <section class="view" id="view-help">
+    <h2 class="hh">Lernen</h2>
+    <div class="helpgrid">
+      <article class="hq"><h3>Wie lerne ich?</h3><p>Tippe im Fächer eine Karte an. Dann „Lösung zeigen“ und „Gewusst“ oder „Nochmal“. Gewusste Karten kommen später wieder, schwere früher.</p></article>
+      <article class="hq"><h3>Was macht „Weiter“?</h3><p>Die Karte geht in die Ablage links oben und bekommt einen blauen Reiter. Ein Klick auf die Ablage holt sie zurück. Ist die Runde leer, kommt die Ablage von selbst.</p></article>
+      <article class="hq"><h3>Was sind Marker und Pinnadel?</h3><p>Rosa heißt Nochmal, Blau heißt Später. Mit der Pinnadel (Taste P) heftest du eine Karte an. Der Modus „Angeheftet“ übt nur diese Karten.</p></article>
+      <article class="hq"><h3>Welche Tasten gibt es?</h3><p>Leertaste dreht die Karte. Pfeil rechts: Gewusst. Pfeil links: Nochmal. P heftet an, Esc legt zurück, 1 bis 7 wählt eine Karte.</p></article>
+    </div>
+    <h2 class="hh">Speichern und Teilen</h2>
+    <div class="helpgrid">
+      <article class="hq"><h3>Wo liegen meine Karten?</h3><p>Im Browser. In Chrome oder Edge am Computer wählst du unter Optionen den Ordner mit karteikarten.html. Dann speichert die Seite dort bei jeder Änderung.</p></article>
+      <article class="hq"><h3>Wie sichere ich meine Karten?</h3><p>Tab „Karten“, dann „Karten speichern“. Ohne Ordner-Zugriff lädt die Seite karteikarten.js herunter. Lege sie neben karteikarten.html, dann findet die Seite sie beim Start.</p></article>
+      <article class="hq"><h3>Wie teile ich Karten?</h3><p>Tab „Karten“, dann „Teilen“. Am Handy wählst du E-Mail oder Discord. Am Computer wird karteikarten.json heruntergeladen: an die Mail hängen oder in Discord ziehen. Dein Lernstand bleibt bei dir.</p></article>
+      <article class="hq"><h3>Wie nutze ich Karten von anderen?</h3><p>Die Datei speichern, dann Tab „Karten“ und „Karten laden“. Die Karten kommen dazu, deine eigenen bleiben. Doppelte werden übersprungen.</p></article>
+      <article class="hq"><h3>Wie ziehe ich auf ein anderes Gerät um?</h3><p>„Karten speichern“, die Datei aufs andere Gerät bringen und dort „Karten laden“. Deinen Lernstand nimmt nur der Ordner mit.</p></article>
+    </div>
+    <h2 class="hh" id="datenschutz">Datenschutz</h2>
+    <div class="helpgrid">
+      <article class="hq"><h3>Was bleibt bei dir?</h3><p>Karten, Einstellungen und Lernstand liegen nur auf deinem Gerät: im Browser-Speicher oder, wenn du es wählst, in deinem Ordner. Die App sendet davon nichts. Zum Löschen leerst du die Website-Daten des Browsers und entfernst die Dateien im Ordner.</p></article>
+      <article class="hq"><h3>Was ist nicht dabei?</h3><p>Keine Konten, kein Tracking, keine Cookies und keine nachgeladenen Schriften oder Skripte.</p></article>
+      <article class="hq"><h3>Update-Suche</h3><p>Ist sie aktiv (Optionen, Version), ruft die App einmal am Tag GitHub in den USA auf. GitHub sieht dabei deine IP-Adresse und die Uhrzeit. Du kannst sie unter Optionen abschalten. Ohne sie nimmt die App keinerlei Verbindung auf.</p></article>
+      <article class="hq"><h3>Teilen</h3><p>Beim Teilen entsteht eine Datei mit Fragen, Antworten und Rubriken, ohne deinen Lernstand. Sie geht dorthin, wohin du sie schickst, zum Beispiel per E-Mail oder Discord. Die App selbst sendet nichts.</p></article>
+      <article class="hq"><h3>Anbieter</h3><p id="anbieter">Die Person oder Seite, von der du die App hast.</p></article>
+    </div>
+    <h2 class="hh">Sonstiges</h2>
+    <div class="helpgrid">
+      <article class="hq"><h3>Was ist die Demo?</h3><p>Der Schalter „Demo“ oben zeigt 10 Beispielkarten für Klasse 7 bis 10. Pinnen und Markieren geht dort auch. Sie landen nicht in deinen Karten.</p></article>
+      <article class="hq"><h3>Wie kommt ein Update?</h3><p>Online fragt die App höchstens einmal am Tag bei GitHub nach einer neuen Version und zeigt dann einen Hinweis. Dabei sieht GitHub deine IP-Adresse. Abschalten kannst du das unter Optionen. In Chrome oder Edge am Computer ersetzt „Aktualisieren“ nur die App-Dateien im Ordner. Karten und Einstellungen bleiben. Sonst kommst du über einen Link zum Download.</p></article>
+      <article class="hq"><h3>Kann ich die App installieren?</h3><p>Ja, wenn die Seite über https läuft, zum Beispiel auf deiner Webseite. Dann erscheint oben „Installieren“. Die lokale Datei kann der Browser nicht installieren, sie läuft aber auch so offline. Am iPhone: Teilen, dann „Zum Home-Bildschirm“.</p></article>
+      <article class="hq"><h3>Brauche ich Internet oder einen Server?</h3><p>Nein. Die Datei karteikarten.html im Browser öffnen, fertig. Es wird nichts nachgeladen und nichts gesendet.</p></article>
+    </div>
+  </section>
+
+  <!-- Alle Karten -->
+  <section class="view" id="view-all">
+    <div class="tools">
+      <button class="btn primary" id="exportBtn" type="button">Karten speichern</button>
+      <button class="btn" id="importBtn" type="button">Karten laden</button>
+      <button class="btn" id="shareBtn" type="button">Teilen</button>
+      <input type="file" id="importFile" accept=".json,.js,application/json,text/javascript" hidden>
+    </div>
+    <div class="chips" id="listChips"></div>
+    <div class="list" id="list"></div>
+  </section>
+
+  <!-- Rubriken -->
+  <section class="view" id="view-cats">
+    <div class="tools"><button class="btn primary" id="newCatBtn" type="button">Neue Rubrik</button></div>
+    <div class="list" id="catList"></div>
+  </section>
+
+  <!-- Optionen -->
+  <section class="view" id="view-opts">
+    <div class="optgrid">
+      <aside class="drawpanel" aria-label="Maßzeichnung der Karte">
+        <div class="drawbox"><svg id="drawSvg" viewBox="0 0 300 300" role="img" aria-label="Maßzeichnung der großen Karte"></svg></div>
+        <dl class="drawinfo" id="drawInfo"></dl>
+      </aside>
+      <div id="optHost"></div>
+    </div>
+  </section>
+</div>
+
+<div id="measure" aria-hidden="true"></div>
+
+<dialog id="editDlg">
+  <h2>Karte bearbeiten</h2>
+  <label>Rubrik</label>
+  <div class="chips" id="editChips"></div>
+  <label for="editQ">Frage</label>
+  <textarea id="editQ"></textarea>
+  <label for="editA">Lösung</label>
+  <textarea id="editA"></textarea>
+  <div class="row">
+    <button class="btn" id="editCancel" type="button">Abbrechen</button>
+    <button class="btn primary" id="editSave" type="button">Speichern</button>
+  </div>
+</dialog>
+
+<dialog id="nameDlg">
+  <h2 id="nameTitle">Rubrik</h2>
+  <input type="text" id="nameInput" maxlength="40" autocomplete="off">
+  <p class="err" id="nameErr"></p>
+  <div class="row" style="margin-top:6px">
+    <button class="btn" id="nameCancel" type="button">Abbrechen</button>
+    <button class="btn primary" id="nameOk" type="button">OK</button>
+  </div>
+</dialog>
+
+<dialog id="confDlg">
+  <h2 id="confTitle"></h2>
+  <p id="confText" style="overflow-wrap:anywhere"></p>
+  <div class="row">
+    <button class="btn" id="confCancel" type="button">Abbrechen</button>
+    <button class="btn danger" id="confOk" type="button">Löschen</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script src="kartenbox.js"></script>
+</body>
+</html>

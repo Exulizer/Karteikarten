@@ -128,6 +128,25 @@ h1 b { font-weight: 700; }
 .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
 .chip.add { border-style: dashed; }
 
+/* Lernen: Modus und Rubrik in einer Zeile, bei Platzmangel umbrechen */
+.filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-bottom: 14px; }
+.filters .chips { margin: 0; }
+.chips.seg { gap: 0; flex-wrap: nowrap; }
+.chips.seg .chip { border-radius: 0; margin-left: -1.5px; }
+.chips.seg .chip:first-child { border-radius: 6px 0 0 6px; margin-left: 0; }
+.chips.seg .chip:last-child { border-radius: 0 6px 6px 0; }
+.chips.seg .chip[aria-pressed="true"] { position: relative; z-index: 1; }
+@media (max-width: 340px) {
+  .chips.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .chips.seg .chip, .chips.seg .chip:first-child, .chips.seg .chip:last-child { border-radius: 6px; margin: 0; }
+  .tab { font-size: .76rem; }
+}
+@media (max-width: 560px) {
+  .chips.seg { width: 100%; }
+  .chips.seg .chip { padding: 6px 4px; font-size: .8rem; white-space: nowrap; flex: 1 1 auto; text-align: center; }
+  .chips.seg .chip span { margin-left: 4px; }
+}
+
 /* Papier: gelbe Karteikarte mit roter Kopflinie und blauen Zeilen.
    --hd (Kopfhöhe) und --lh (Zeilenhöhe) kommen aus den Einstellungen. */
 .paper {
@@ -419,7 +438,6 @@ body::before {   /* eigene Ebene: ruckelfrei beim Scrollen und Animieren, auch a
 }
 .tab { color: var(--ruler-ink); opacity: .72; margin-bottom: 0; }
 .tab[aria-selected="true"] { color: var(--ruler-ink); opacity: 1; border-color: var(--ruler-ink); background: rgba(255, 255, 255, .22); }
-.tab:hover { opacity: 1; }
 
 /* Schmal: Stifte liegen quer im Holzstreifen über der Unterlage und scrollen mit der Seite weg */
 .desk { position: absolute; left: 0; right: 0; top: 0; height: 60px; z-index: 0; pointer-events: none; }
@@ -449,23 +467,42 @@ body::before {   /* eigene Ebene: ruckelfrei beim Scrollen und Animieren, auch a
 }
 .fcard.sel .num, .fcard.leaving .num { display: none; }
 
-/* Navigation: Lineal-Marke gleitet, Ansichten schieben sich leicht ein */
+/* Navigation: Die Marke gleitet unter den aktiven Tab, Ansichten kommen wie umgeblätterte Heftseiten */
 .tab-ind {
-  position: absolute; left: 0; top: 0; bottom: 12px; width: 0; background: rgba(255, 255, 255, .26); border-bottom: 3px solid var(--ruler-ink); pointer-events: none;
-  transition: transform calc(.45s / var(--tempo, 1)) cubic-bezier(.3, 1.35, .5, 1), width calc(.45s / var(--tempo, 1)) cubic-bezier(.3, 1.35, .5, 1);
+  position: absolute; left: 0; top: 0; bottom: 12px; width: 0; background: rgba(255, 255, 255, .26); pointer-events: none;
+  transition: transform calc(.5s / var(--tempo, 1)) cubic-bezier(.4, 0, .15, 1), width calc(.5s / var(--tempo, 1)) cubic-bezier(.4, 0, .15, 1);
 }
+.tab-ind::before { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--ruler-ink); }   /* gerader Strich unter dem aktiven Tab */
 .tab[aria-selected="true"] { background: none; border-color: transparent; }
-.tab { position: relative; z-index: 1; transition: opacity .2s; }
+.tab { position: relative; z-index: 1; transition: opacity .2s, transform .2s; }
+/* Mouseover: ein heller Streifen gleitet weich von Tab zu Tab und blendet beim Verlassen aus */
+.tab-hov {
+  position: absolute; left: 0; top: 0; bottom: 12px; width: 0; background: rgba(255, 255, 255, .2); opacity: 0; pointer-events: none; border-radius: 2px;
+  transition: transform calc(.28s / var(--tempo, 1)) cubic-bezier(.2, .8, .3, 1), width calc(.28s / var(--tempo, 1)) cubic-bezier(.2, .8, .3, 1), opacity .3s ease;
+}
+.tab-hov.on { opacity: 1; }
+.tab-hov.nt { transition: opacity .3s ease; }
+.tab { transition: opacity .35s ease, transform .2s; }
+.tab.hot { opacity: 1; }
+.tab { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.tab .ti { width: 1.05em; height: 1.05em; flex: none; fill: currentColor; transition: transform .3s cubic-bezier(.3, 1.5, .5, 1); }
+.tab.hot .ti { transform: translateY(-2px) scale(1.15); }
+.tab[aria-selected="true"] .ti { animation: wipp calc(.55s / var(--tempo, 1)) cubic-bezier(.3, 1.4, .5, 1); }
+@keyframes wipp { 0% { transform: translateY(3px) scale(.7) rotate(-14deg); } 55% { transform: translateY(-3px) scale(1.2) rotate(8deg); } 100% { transform: none; } }
+@media (max-width: 600px) {
+  .tab { flex-direction: column; gap: 3px; padding: 8px 1px 7px; font-size: .74rem; line-height: 1.1; }
+  .tab .ti { width: 1.25em; height: 1.25em; }
+}
 .tab:active { transform: translateY(1px); }
-.view.active { animation: viewin calc(.32s / var(--tempo, 1)) cubic-bezier(.2, .8, .2, 1); }
-@keyframes viewin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .view.active { animation: none; } .tab-ind { transition: none; } }
+.view.active { animation: viewin calc(.4s / var(--tempo, 1)) cubic-bezier(.2, .8, .2, 1); transform-origin: 0 0; }
+@keyframes viewin { from { opacity: 0; transform: perspective(900px) rotateY(-9deg) translateX(14px); } to { opacity: 1; transform: none; } }
 
 /* Untere Leiste: bleibt unten stehen und gehört zur Schreibunterlage */
 .dock {
   position: sticky; bottom: 0; z-index: 60; margin: 14px -18px -40px; padding: 10px 18px 14px; border-radius: 0 0 12px 12px;
   background-color: var(--panel); border-top: 2px dashed var(--line); box-shadow: 0 -14px 16px -14px rgba(0, 0, 0, .35);
 }
+.dock.free { position: static; }
 .dock .steps, .dock .controls, .dock .keys { margin-top: 8px; }
 .dock .steps { margin-top: 0; }
 @media (max-width: 600px) {
@@ -475,6 +512,131 @@ body::before {   /* eigene Ebene: ruckelfrei beim Scrollen und Animieren, auch a
   .dock .steps li b { width: 19px; height: 19px; font-size: .72rem; flex: none; }
   .dock .controls { gap: 8px; }
   .dock .btn { padding: 8px 12px; }
+}
+
+.filters { margin-top: 14px; margin-bottom: 20px; }
+}
+@media (pointer: coarse) { .dock .keys { display: none; } }   /* Tastenkürzel brauchen Handy und Tablet nicht, das spart eine Zeile */
+
+/* Desktop: Schritte links und Buttons rechts neben dem Fächer, unten wird kein Platz gebraucht und nichts muss gescrollt werden */
+.dock[hidden] { display: none; }
+@media (min-width: 900px) {
+  #view-study { position: relative; }
+  .dock, .dock.free {
+    position: absolute; left: 0; right: 0; bottom: 0; margin: 0; padding: 0; background: none; border: 0; box-shadow: none; border-radius: 0;
+    display: flex; justify-content: space-between; align-items: flex-end; pointer-events: none; z-index: 60;
+  }
+  .dock > * { pointer-events: auto; }
+  .dock .steps { flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 6px; margin: 0; width: 204px; }
+  .dock .steps li { font-size: .84rem; padding: 6px 10px; white-space: nowrap; justify-content: flex-start; }
+  .dock .controls { flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 8px; margin: 0; width: 164px; }
+  .dock .btn { white-space: nowrap; padding: 8px 12px; }
+  .dock .keys { display: none; }
+}
+
+/* Logo und Name: führen zur Startseite, die Karten fächern sich beim Darüberfahren auf */
+.brand { display: flex; align-items: center; gap: 10px; padding: 2px 8px 2px 2px; margin-left: -2px; background: none; border: 0; border-radius: 8px; color: inherit; font: inherit; cursor: pointer; }
+.brand b { letter-spacing: 0; transition: letter-spacing .35s cubic-bezier(.3, 1.3, .5, 1), color .2s; }
+.brand .lb, .brand .lf { transform-box: fill-box; transform-origin: 50% 60%; transition: transform .4s cubic-bezier(.3, 1.5, .5, 1); }
+.brand:hover .lb { transform: translate(-3px, -2px) rotate(-10deg); }
+.brand:hover .lf { transform: translate(3px, 1px) rotate(8deg); }
+.brand:hover b { letter-spacing: .05em; }
+.brand:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.brand.hop .logo { animation: logohop calc(.6s / var(--tempo, 1)) cubic-bezier(.3, 1.4, .5, 1); }
+.brand.hop b { animation: namehop calc(.6s / var(--tempo, 1)) cubic-bezier(.3, 1.4, .5, 1); }
+@keyframes logohop { 0% { transform: none; } 30% { transform: translateY(-9px) rotate(-12deg) scale(1.15); } 60% { transform: translateY(1px) rotate(5deg); } 100% { transform: none; } }
+@keyframes namehop { 0% { transform: none; } 35% { transform: translateX(5px); } 100% { transform: none; } }
+@media (max-width: 360px) {   /* sehr schmale Handys: Kopfzeile enger, damit nichts über den Rand ragt */
+  .brand { gap: 6px; padding-right: 2px; }
+  h1 { font-size: 1.05rem; }
+  .logo { width: 28px; height: 28px; }
+  header { gap: 6px; }
+}
+
+/* Große Fenster: Zubehör auf dem Tisch. Links ein Notizzettel mit Handschrift, rechts ein Taschenrechner mit Pixelanzeige, beide schief hingelegt */
+.lcd { display: none; }
+@media (min-width: 1340px) {
+  .dock, .dock.free { left: -238px; right: -224px; bottom: -22px; }
+  .pen { height: 200px; top: 70px; right: calc(50% + 520px); }
+  .marker { height: 125px; top: 270px; right: calc(50% + 560px); }
+  .pencil { height: 215px; top: 110px; left: calc(50% + 510px); }
+
+  /* Notizzettel */
+  .dock .steps {
+    position: relative; width: 208px; padding: 40px 16px 22px 18px; gap: 2px; transform: rotate(-3.5deg); transform-origin: 50% 100%;
+    filter: drop-shadow(3px 7px 7px rgba(0, 0, 0, .35)); color: #2a2a45; font: 700 18px/1.25 "Segoe Print", "Bradley Hand", "Chalkboard SE", "Comic Sans MS", cursive;
+  }
+  .dock .steps::before {   /* Papier mit abgehobener Ecke unten rechts */
+    content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(172deg, #fff7a8, #fbe97c);
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 36px), calc(100% - 36px) 100%, 0 100%);
+  }
+  .dock .steps::after {   /* die umgeklappte Ecke */
+    content: ''; position: absolute; right: 0; bottom: 0; width: 36px; height: 36px; border-radius: 0 0 0 10px; transform: rotate(-4deg); transform-origin: 100% 100%;
+    background: linear-gradient(135deg, #e2cf5d 0 45%, #f6e88a 46%); box-shadow: -4px -4px 8px rgba(0, 0, 0, .28);
+  }
+  .dock .steps li {
+    background: none; border: 0; box-shadow: none; padding: 3px 4px 2px 28px; gap: 0; font: inherit; color: #5b5b70; position: relative; white-space: normal;
+    background-image: linear-gradient(rgba(60, 110, 190, .45), rgba(60, 110, 190, .45)); background-size: 100% 1.5px; background-position: 0 100%; background-repeat: no-repeat;
+  }
+  .dock .steps li b {   /* handgemalter Kreis mit Zahl */
+    position: absolute; left: 0; top: 4px; width: 22px; height: 22px; border-radius: 50% 46% 52% 48%; border: 2px solid #2a3f9a; background: none; color: #2a3f9a;
+    font: inherit; font-size: 14px; line-height: 18px; text-align: center; transform: rotate(-6deg);
+  }
+  .dock .steps li.now { color: #1d1d33; background-image: linear-gradient(transparent 52%, rgba(255, 120, 150, .5) 52%), linear-gradient(rgba(60, 110, 190, .45), rgba(60, 110, 190, .45)); background-size: 100% 100%, 100% 1.5px; background-position: 0 0, 0 100%; }
+  .dock .steps li.done { opacity: 1; color: #55704f; }
+  .dock .steps li.done::after { content: '✓'; position: absolute; right: 2px; top: 0; color: #2f8a4a; font-size: 20px; }
+  .dock .steps li.now b { background: #2a3f9a; color: #fff9c4; }
+  .dock .steps { z-index: 0; isolation: isolate; }
+
+  /* Taschenrechner */
+  .dock .controls {
+    position: relative; width: 184px; padding: 24px 12px 14px; gap: 8px; transform: rotate(4deg); transform-origin: 50% 100%; border-radius: 16px 16px 20px 20px;
+    background: linear-gradient(160deg, #e3e5ea, #b4b8c1 70%, #a3a8b2); box-shadow: 0 16px 26px rgba(0, 0, 0, .42), inset 0 2px 0 rgba(255, 255, 255, .7), inset 0 -3px 0 rgba(0, 0, 0, .18);
+  }
+  .dock .controls::before {   /* Solarzelle */
+    content: ''; position: absolute; top: 8px; right: 14px; width: 54px; height: 9px; border-radius: 2px; background: repeating-linear-gradient(90deg, #3b3140 0 9px, #5a4a63 9px 10px); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .5);
+  }
+  .lcd {
+    display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; height: 56px; padding: 4px 8px 4px; border-radius: 6px; border: 3px solid #8c919b;
+    background: linear-gradient(rgba(0, 0, 0, .09) 1px, transparent 1px) 0 0 / 100% 3px, linear-gradient(90deg, rgba(0, 0, 0, .09) 1px, transparent 1px) 0 0 / 3px 100%, #b9cba3;
+    box-shadow: inset 0 3px 6px rgba(0, 0, 0, .35); color: #1c2a15; font-family: "Lucida Console", "Consolas", "Courier New", monospace; -webkit-font-smoothing: none; font-smooth: never;
+  }
+  .lcd i { font: 700 9px/1 "Lucida Console", "Consolas", "Courier New", monospace; letter-spacing: .12em; align-self: flex-start; opacity: .75; }
+  .lcd b { font-size: 26px; line-height: 1; font-weight: 700; letter-spacing: .06em; text-shadow: 1px 0 currentColor, 0 1px currentColor; }
+  .dock .controls .btn {   /* Tasten */
+    border: 0; border-radius: 9px; padding: 9px 8px; background: #3a3f4d; color: #fff; font: 700 14.5px/1.15 system-ui, sans-serif; box-shadow: 0 4px 0 #181a21, 0 6px 8px rgba(0, 0, 0, .35); transition: transform .08s, box-shadow .08s, filter .15s;
+  }
+  .dock .controls .btn.primary { background: #e8702a; box-shadow: 0 4px 0 #8f3f10, 0 6px 8px rgba(0, 0, 0, .35); }
+  .dock .controls #okBtn { background: #2f9e5f; box-shadow: 0 4px 0 #17603a, 0 6px 8px rgba(0, 0, 0, .35); }
+  .dock .controls #badBtn { background: #c8453a; color: #fff; box-shadow: 0 4px 0 #7d241d, 0 6px 8px rgba(0, 0, 0, .35); }
+  .dock .controls .btn:hover:not(:disabled) { filter: brightness(1.12); }
+  .dock .controls .btn:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 #111, 0 2px 3px rgba(0, 0, 0, .35); }
+  .dock .controls .btn:disabled { opacity: .72; }
+}
+
+/* Filterleiste: beim Hochscrollen bleibt sie oben stehen und wandert animiert in die Mitte, beim Zurückscrollen wieder nach links */
+#filtSent { height: 0; }
+.filters.pin { position: fixed; top: 8px; margin: 0; z-index: 55; box-sizing: border-box; }
+@media (min-width: 760px) { .filters { position: sticky; top: 8px; z-index: 55; } }
+.filters::before {
+  content: ''; position: absolute; inset: -7px -12px; z-index: -1; border-radius: 14px; background: var(--panel); border: 1.5px solid var(--line);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, .28); opacity: 0; transform: scale(.97); transition: opacity .3s ease, transform .35s cubic-bezier(.3, 1.3, .5, 1); pointer-events: none;
+}
+.filters.stuck { justify-content: center; }
+.filters.stuck::before { opacity: 1; transform: none; }
+
+/* Winzige Fenster (Browser-Entwicklertools, kleine Handys): nichts ragt raus, Leiste verdeckt keine Karten */
+@media (max-width: 340px) {
+  header { flex-wrap: wrap; }
+  .hright { flex: 1 1 auto; justify-content: flex-end; min-width: 0; }
+  .switch { padding-right: 8px; }
+  .tab { min-width: 0; padding-left: 2px; padding-right: 2px; }
+  .tab span { display: none; }
+  .tab .ti { width: 1.3em; height: 1.3em; }
+}
+@media (max-width: 340px), (max-height: 520px) {
+  .filters { position: static; }
+  .filters::before { display: none; }
 }
 </style>
 </head>
@@ -486,24 +648,26 @@ body::before {   /* eigene Ebene: ruckelfrei beim Scrollen und Animieren, auch a
 </div>
 <div class="wrap">
   <header>
-    <h1><svg class="logo" viewBox="0 0 48 48" width="40" height="40" aria-hidden="true"><rect x="6" y="9" width="30" height="22" rx="3" transform="rotate(-9 21 20)" fill="#f2dd7a" stroke="#2a2619" stroke-width="2"/><g transform="rotate(7 27 28)"><rect x="11" y="15" width="31" height="23" rx="3" fill="#fbee9a" stroke="#2a2619" stroke-width="2"/><line x1="12" y1="22" x2="41" y2="22" stroke="#c2402f" stroke-width="2"/><line x1="12" y1="28" x2="41" y2="28" stroke="#5b86c9" stroke-width="1.4"/><line x1="12" y1="33" x2="41" y2="33" stroke="#5b86c9" stroke-width="1.4"/></g></svg><b>Kartenbox</b></h1>
+    <h1><button class="brand" id="homeBtn" type="button" aria-label="Kartenbox, zur Startseite" title="Zur Startseite"><svg class="logo" viewBox="0 0 48 48" width="40" height="40" aria-hidden="true"><g class="lb"><rect x="6" y="9" width="30" height="22" rx="3" transform="rotate(-9 21 20)" fill="#f2dd7a" stroke="#2a2619" stroke-width="2"/></g><g class="lf"><g transform="rotate(7 27 28)"><rect x="11" y="15" width="31" height="23" rx="3" fill="#fbee9a" stroke="#2a2619" stroke-width="2"/><line x1="12" y1="22" x2="41" y2="22" stroke="#c2402f" stroke-width="2"/><line x1="12" y1="28" x2="41" y2="28" stroke="#5b86c9" stroke-width="1.4"/><line x1="12" y1="33" x2="41" y2="33" stroke="#5b86c9" stroke-width="1.4"/></g></g></svg><b>Kartenbox</b></button></h1>
     <div class="hright">
       <button class="switch" id="demoSw" type="button" role="switch" aria-checked="false" title="Demo-Karten ein- oder ausschalten"><i></i>Demo</button>
-      <button class="pill" id="fileBtn" type="button" title="Karten liegen nur in diesem Browser. Ordner verbinden unter Optionen.">Browser</button>
       <button class="pill inst" id="installBtn" type="button" hidden aria-label="App installieren"><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M10 3v9m0 0-3.5-3.5M10 12l3.5-3.5M4 16h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="lbl">Installieren</span></button>
       <button class="iconbtn" id="themeBtn" type="button" aria-label="Dunkles Design"></button>
     </div>
   </header>
 
+  <!-- Icons der Navigation: Font Awesome Free, CC BY 4.0, https://fontawesome.com/license/free -->
   <nav class="tabs" role="tablist">
+    <span class="tab-hov" id="tabHov" aria-hidden="true"></span>
     <span class="tab-ind" id="tabInd" aria-hidden="true"></span>
-    <button class="tab" role="tab" data-view="study" aria-selected="true">Lernen</button>
-    <button class="tab" role="tab" data-view="add" aria-selected="false">Neu</button>
-    <button class="tab" role="tab" data-view="all" aria-selected="false">Karten</button>
-    <button class="tab" role="tab" data-view="cats" aria-selected="false">Rubriken</button>
-    <button class="tab" role="tab" data-view="opts" aria-selected="false">Optionen</button>
-    <button class="tab" role="tab" data-view="help" aria-selected="false">Hilfe</button>
+    <button class="tab" role="tab" data-view="study" aria-selected="true"><svg class="ti" viewBox="0 0 576 512" aria-hidden="true" focusable="false"><path d="M48 195.8l209.2 86.1c9.8 4 20.2 6.1 30.8 6.1s21-2.1 30.8-6.1l242.4-99.8c9-3.7 14.8-12.4 14.8-22.1s-5.8-18.4-14.8-22.1L318.8 38.1C309 34.1 298.6 32 288 32s-21 2.1-30.8 6.1L14.8 137.9C5.8 141.6 0 150.3 0 160L0 456c0 13.3 10.7 24 24 24s24-10.7 24-24l0-260.2zm48 71.7L96 384c0 53 86 96 192 96s192-43 192-96l0-116.6-142.9 58.9c-15.6 6.4-32.2 9.7-49.1 9.7s-33.5-3.3-49.1-9.7L96 267.4z"/></svg><span>Lernen</span></button>
+    <button class="tab" role="tab" data-view="add" aria-selected="false"><svg class="ti" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><path d="M36.4 353.2c4.1-14.6 11.8-27.9 22.6-38.7l181.2-181.2 33.9-33.9c16.6 16.6 51.3 51.3 104 104l33.9 33.9-33.9 33.9-181.2 181.2c-10.7 10.7-24.1 18.5-38.7 22.6L30.4 510.6c-8.3 2.3-17.3 0-23.4-6.2S-1.4 489.3 .9 481L36.4 353.2zm55.6-3.7c-4.4 4.7-7.6 10.4-9.3 16.6l-24.1 86.9 86.9-24.1c6.4-1.8 12.2-5.1 17-9.7L91.9 349.5zm354-146.1c-16.6-16.6-51.3-51.3-104-104L308 65.5C334.5 39 349.4 24.1 352.9 20.6 366.4 7 384.8-.6 404-.6S441.6 7 455.1 20.6l35.7 35.7C504.4 69.9 512 88.3 512 107.4s-7.6 37.6-21.2 51.1c-3.5 3.5-18.4 18.4-44.9 44.9z"/></svg><span>Neu</span></button>
+    <button class="tab" role="tab" data-view="all" aria-selected="false"><svg class="ti" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><path d="M232.5 5.2c14.9-6.9 32.1-6.9 47 0l218.6 101c8.5 3.9 13.9 12.4 13.9 21.8s-5.4 17.9-13.9 21.8l-218.6 101c-14.9 6.9-32.1 6.9-47 0L13.9 149.8C5.4 145.8 0 137.3 0 128s5.4-17.9 13.9-21.8L232.5 5.2zM48.1 218.4l164.3 75.9c27.7 12.8 59.6 12.8 87.3 0l164.3-75.9 34.1 15.8c8.5 3.9 13.9 12.4 13.9 21.8s-5.4 17.9-13.9 21.8l-218.6 101c-14.9 6.9-32.1 6.9-47 0L13.9 277.8C5.4 273.8 0 265.3 0 256s5.4-17.9 13.9-21.8l34.1-15.8zM13.9 362.2l34.1-15.8 164.3 75.9c27.7 12.8 59.6 12.8 87.3 0l164.3-75.9 34.1 15.8c8.5 3.9 13.9 12.4 13.9 21.8s-5.4 17.9-13.9 21.8l-218.6 101c-14.9 6.9-32.1 6.9-47 0L13.9 405.8C5.4 401.8 0 393.3 0 384s5.4-17.9 13.9-21.8z"/></svg><span>Karten</span></button>
+    <button class="tab" role="tab" data-view="cats" aria-selected="false"><svg class="ti" viewBox="0 0 576 512" aria-hidden="true" focusable="false"><path d="M56 225.6L32.4 296.2 32.4 96c0-35.3 28.7-64 64-64l138.7 0c13.8 0 27.3 4.5 38.4 12.8l38.4 28.8c5.5 4.2 12.3 6.4 19.2 6.4l117.3 0c35.3 0 64 28.7 64 64l0 16-365.4 0c-41.3 0-78 26.4-91.1 65.6zM477.8 448L99 448c-32.8 0-55.9-32.1-45.5-63.2l48-144C108 221.2 126.4 208 147 208l378.8 0c32.8 0 55.9 32.1 45.5 63.2l-48 144c-6.5 19.6-24.9 32.8-45.5 32.8z"/></svg><span>Rubriken</span></button>
+    <button class="tab" role="tab" data-view="opts" aria-selected="false"><svg class="ti" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><path d="M32 64C14.3 64 0 78.3 0 96s14.3 32 32 32l86.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48L480 128c17.7 0 32-14.3 32-32s-14.3-32-32-32L265.3 64C253 35.7 224.8 16 192 16s-61 19.7-73.3 48L32 64zm0 160c-17.7 0-32 14.3-32 32s14.3 32 32 32l246.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48l54.7 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-54.7 0c-12.3-28.3-40.5-48-73.3-48s-61 19.7-73.3 48L32 224zm0 160c-17.7 0-32 14.3-32 32s14.3 32 32 32l54.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48L480 448c17.7 0 32-14.3 32-32s-14.3-32-32-32l-246.7 0c-12.3-28.3-40.5-48-73.3-48s-61 19.7-73.3 48L32 384z"/></svg><span>Optionen</span></button>
+    <button class="tab" role="tab" data-view="help" aria-selected="false"><svg class="ti" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><path d="M256 512a256 256 0 1 0 0-512 256 256 0 1 0 0 512zm0-336c-17.7 0-32 14.3-32 32 0 13.3-10.7 24-24 24s-24-10.7-24-24c0-44.2 35.8-80 80-80s80 35.8 80 80c0 47.2-36 67.2-56 74.5l0 3.8c0 13.3-10.7 24-24 24s-24-10.7-24-24l0-8.1c0-20.5 14.8-35.2 30.1-40.2 6.4-2.1 13.2-5.5 18.2-10.3 4.3-4.2 7.7-10 7.7-19.6 0-17.7-14.3-32-32-32zM224 368a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z"/></svg><span>Hilfe</span></button>
   </nav>
+
 
   <div class="banner" id="banner" hidden>
     <span id="bannerText"></span>
@@ -512,8 +676,11 @@ body::before {   /* eigene Ebene: ruckelfrei beim Scrollen und Animieren, auch a
 
   <!-- Lernen -->
   <section class="view active" id="view-study">
-    <div class="chips" id="studyChips"></div>
-    <div class="chips" id="modeChips" aria-label="Welche Karten"></div>
+    <div id="filtSent" aria-hidden="true"></div>
+    <div class="filters">
+      <div class="chips seg" id="modeChips" aria-label="Welche Karten"></div>
+      <div class="chips" id="studyChips" aria-label="Rubrik"></div>
+    </div>
     <div class="stats" id="statsBar" hidden></div>
     <div id="studyEmpty" class="empty" hidden>
       <span id="emptyMsg">In dieser Rubrik gibt es noch keine Karten.</span><br><br>
@@ -537,6 +704,7 @@ body::before {   /* eigene Ebene: ruckelfrei beim Scrollen und Animieren, auch a
       <li><b>3</b>Gewusst oder Nochmal</li>
     </ol>
     <div class="controls" id="studyControls" hidden>
+      <div class="lcd" id="lcd" aria-hidden="true"><i>KARTEN</i><b id="lcdN">0/0</b></div>
       <button class="btn" id="flipBtn" type="button" disabled>Lösung zeigen</button>
       <button class="btn primary" id="nextBtn" type="button" title="Legt die Karte unten im Stapel ab" disabled>Weiter</button>
       <button class="btn" id="badBtn" type="button" hidden>Nochmal</button>
@@ -712,6 +880,11 @@ body::before {   /* eigene Ebene: ruckelfrei beim Scrollen und Animieren, auch a
   function toast(msg) {
     var t = $('toast');
     t.textContent = msg;
+    function pos() {   // Hinweis steht über der unteren Leiste, nie darauf
+      var dk = document.querySelector('.dock'), dr = dk && dk.offsetParent !== null ? dk.getBoundingClientRect() : null;
+      t.style.bottom = (dr && dr.height > 0 && dr.top < innerHeight ? Math.round(innerHeight - dr.top) + 10 : 22) + 'px';
+    }
+    pos(); setTimeout(pos, 60);
     t.classList.add('show');
     clearTimeout(tt);
     tt = setTimeout(function () { t.classList.remove('show'); }, 2800);
@@ -1023,19 +1196,14 @@ body::before {   /* eigene Ebene: ruckelfrei beim Scrollen und Animieren, auch a
     toast('Ordner getrennt');
   }
   function renderFile() {
-    var b = $('fileBtn');
-    b.className = 'pill';
-    if (FL.state === 'ok') { b.textContent = 'Ordner'; b.classList.add('ok'); b.title = 'Gespeichert im Ordner „' + FL.name + '“'; }
-    else if (FL.state === 'needperm') { b.textContent = 'Freigeben'; b.classList.add('warn'); b.title = 'Zugriff auf den Ordner erlauben'; }
-    else if (FL.state === 'error') { b.textContent = 'Ordnerfehler'; b.classList.add('warn'); b.title = 'Der Ordner lässt sich nicht beschreiben'; }
-    else { b.textContent = 'Browser'; b.title = 'Karten liegen nur in diesem Browser. Ordner verbinden unter Optionen.'; }
-    var need = FL.state === 'needperm';
-    $('banner').hidden = !need;
+    var need = FL.state === 'needperm', bad = FL.state === 'error';   // Der Ordner steht unter Optionen; hier nur, wenn etwas nicht stimmt
+    $('banner').hidden = !(need || bad);
+    $('bannerBtn').textContent = bad ? 'Optionen' : 'Erlauben';
     if (need) $('bannerText').textContent = 'Zugriff auf den Ordner „' + FL.name + '“ erlauben, damit Karten und Einstellungen dort gespeichert werden.';
+    if (bad) $('bannerText').textContent = 'Der Ordner lässt sich nicht beschreiben. Prüfe ihn unter Optionen.';
     if (current === 'opts') renderOptions();
   }
-  $('fileBtn').addEventListener('click', function () { if (FL.state === 'needperm') fileGrant(); else show('opts'); });
-  $('bannerBtn').addEventListener('click', fileGrant);
+  $('bannerBtn').addEventListener('click', function () { if (FL.state === 'error') show('opts'); else fileGrant(); });
 
   /* ===== Chips und Dialoge ===== */
   function chips(host, opts, val, pick, extra) {
@@ -1105,7 +1273,7 @@ body::before {   /* eigene Ebene: ruckelfrei beim Scrollen und Animieren, auch a
     current = view;
     document.querySelectorAll('.tab').forEach(function (t) { t.setAttribute('aria-selected', String(t.dataset.view === view)); });
     document.querySelectorAll('.view').forEach(function (v) { v.classList.toggle('active', v.id === 'view-' + view); });
-    moveInd();
+    moveInd(true);
     if (view === 'study') { if (studyDirty) rebuildStudy(); else if (!$('stage').hidden) layout(); }
     if (view === 'add') { renderAddChips(); resetAdd(); $('newQ').focus(); }
     if (view === 'all') { renderListChips(); renderList(); }
@@ -1113,19 +1281,101 @@ body::before {   /* eigene Ebene: ruckelfrei beim Scrollen und Animieren, auch a
     if (view === 'opts') renderOptions();
   }
   /* Lineal-Marke: gleitet unter den aktiven Tab */
-  function moveInd() {
-    var t = document.querySelector('.tab[aria-selected="true"]'), i = $('tabInd');
+  var prevTab = -1, indT = 0;
+  function moveInd(anim) {
+    var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab')), t = document.querySelector('.tab[aria-selected="true"]'), i = $('tabInd');
     if (!t || !i) return;
-    i.style.width = t.offsetWidth + 'px';
-    i.style.transform = 'translateX(' + t.offsetLeft + 'px)';
+    var idx = tabs.indexOf(t), a = tabs[prevTab];
+    function rest() { i.style.width = t.offsetWidth + 'px'; i.style.transform = 'translateX(' + t.offsetLeft + 'px)'; i.classList.remove('moving'); }
+    clearTimeout(indT);
+    if (anim === true && a && prevTab !== idx && CFG.animation.an) {
+      // ein Zug: Streifen, Linie und Stift gleiten gemeinsam zum neuen Tab
+      i.classList.add('moving');
+      i.style.width = t.offsetWidth + 'px'; i.style.transform = 'translateX(' + t.offsetLeft + 'px)';
+      indT = setTimeout(function () { i.classList.remove('moving'); }, 520 / CFG.animation.tempo);
+    } else rest();
+    prevTab = idx;
   }
-  window.addEventListener('resize', moveInd);
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(moveInd);
+  /* Mouseover: das helle Kästchen wandert mit der Maus mit (weich nachgezogen) */
+  (function () {
+    var nav = document.querySelector('.tabs'), hv = $('tabHov');
+    if (!nav || !hv || !window.matchMedia || !matchMedia('(hover: hover)').matches) return;
+    var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab'));
+    function follow(e) {
+      var r = nav.getBoundingClientRect(), x = e.clientX - r.left, t = null;
+      tabs.forEach(function (o) { if (x >= o.offsetLeft && x < o.offsetLeft + o.offsetWidth) t = o; });
+      if (!t) return;
+      var w = t.offsetWidth, left = Math.max(0, Math.min(nav.clientWidth - w, x - w / 2));   // Kästchen sitzt mittig unter der Maus, bleibt aber in der Leiste
+      if (!hv.classList.contains('on')) { hv.classList.add('nt'); hv.style.width = w + 'px'; hv.style.transform = 'translateX(' + left + 'px)'; void hv.offsetWidth; hv.classList.remove('nt'); hv.classList.add('on'); }
+      hv.style.width = w + 'px'; hv.style.transform = 'translateX(' + left + 'px)';
+      tabs.forEach(function (o) { o.classList.toggle('hot', o === t); });
+    }
+    nav.addEventListener('mousemove', follow);
+    nav.addEventListener('mouseenter', follow);
+    nav.addEventListener('mouseleave', function () {
+      hv.classList.remove('on');
+      tabs.forEach(function (o) { o.classList.remove('hot'); });
+    });
+  })();
+  /* Logo und Name führen zur Startseite (Lernen) */
+  $('homeBtn').addEventListener('click', function () {
+    var b = this;
+    b.classList.remove('hop'); void b.offsetWidth; b.classList.add('hop');
+    setTimeout(function () { b.classList.remove('hop'); }, 700);
+    show('study');
+    window.scrollTo({ top: 0, behavior: CFG.animation.an ? 'smooth' : 'auto' });
+  });
+  /* Filterleiste klebt oben und rückt in die Mitte (FLIP-Animation), Rückweg umgekehrt */
+  (function () {
+    var f = document.querySelector('.filters'), sent = $('filtSent'), stuck = false, raf = 0, clr = 0;
+    if (!f || !sent) return;
+    function pos() { return Array.prototype.map.call(f.children, function (k) { var r = k.getBoundingClientRect(); return { x: r.left, y: r.top }; }); }
+    var pinned = false, lastY = 0, up = false;
+    function narrow() { return innerWidth < 760 && !matchMedia('(max-width: 340px), (max-height: 520px)').matches; }
+    function pin(on) {   // Handy: Leiste wird sofort beim ersten Scrollen fest oben angeheftet (Platzhalter hält die Höhe)
+      pinned = on;
+      if (on) {
+        var r = f.getBoundingClientRect(), cs = getComputedStyle(f);
+        sent.style.height = (r.height + (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.marginBottom) || 0)) + 'px';
+        f.style.left = r.left + 'px'; f.style.width = r.width + 'px'; f.classList.add('pin');
+      } else { f.classList.remove('pin'); f.style.left = f.style.width = ''; sent.style.height = ''; }
+    }
+    function set(on) {
+      if (on === stuck) return;
+      var kids = Array.prototype.slice.call(f.children), before = pos();
+      stuck = on; f.classList.toggle('stuck', on);
+      if (narrow() || pinned) pin(on && narrow());
+      if (!CFG.animation.an) return;
+      var after = pos();
+      kids.forEach(function (k, i) { k.style.transition = 'none'; k.style.transform = 'translate(' + (before[i].x - after[i].x) + 'px,' + (before[i].y - after[i].y) + 'px)'; });
+      void f.offsetWidth;
+      kids.forEach(function (k) { k.style.transition = 'transform ' + (0.5 / CFG.animation.tempo) + 's cubic-bezier(.3, 1.15, .4, 1)'; k.style.transform = ''; });
+      clearTimeout(clr);
+      clr = setTimeout(function () { kids.forEach(function (k) { k.style.transition = ''; }); }, 700 / CFG.animation.tempo);
+    }
+    function check() {
+      raf = 0;
+      var nar = narrow(), active = current === 'study' && sent.offsetParent !== null && (nar || getComputedStyle(f).position === 'sticky');
+      var y = window.scrollY; if (y !== lastY) { up = y < lastY; lastY = y; }
+      if (nar) {   // runter: sofort anheften; hoch: sobald die Navigation wieder sichtbar wird zurück an den Platz
+        var navB = document.querySelector('.tabs').getBoundingClientRect().bottom;
+        set(active && (pinned ? !(up && navB > 0) && y > 2 : y > 10 && !up));
+      }
+      else set(active && sent.getBoundingClientRect().top < (parseFloat(getComputedStyle(f).top) || 0) - 1);
+      if (!nar && pinned) pin(false);
+      if (pinned) { var r = sent.parentNode.getBoundingClientRect(), g = getComputedStyle(sent.parentNode); f.style.left = (r.left + (parseFloat(g.paddingLeft) || 0)) + 'px'; f.style.width = (r.width - (parseFloat(g.paddingLeft) || 0) - (parseFloat(g.paddingRight) || 0)) + 'px'; }
+    }
+    function ask() { if (!raf) raf = requestAnimationFrame(check); }
+    window.addEventListener('scroll', ask, { passive: true });
+    window.addEventListener('resize', ask);
+  })();
+  window.addEventListener('resize', function () { moveInd(); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { moveInd(); });
   document.querySelectorAll('.tab').forEach(function (t) { t.addEventListener('click', function () { show(t.dataset.view); }); });
   document.querySelectorAll('[data-goto]').forEach(function (b) { b.addEventListener('click', function () { show(b.dataset.goto); }); });
 
   /* ===== Lernen: große Karte oben, Fächer immer sichtbar darunter, Stapel rechts ===== */
-  var S = { shelf: [], demo: false, mode: 'alle', round: { ok: 0, bad: 0 }, marks: {}, cat: null, list: [], queue: [], total: 0, done: 0, els: {}, sel: null, gen: 0 };
+  var S = { shelf: [], demo: false, mode: 'alle', round: { ok: 0, bad: 0 }, marks: {}, cat: null, list: [], queue: [], total: 0, done: 0, els: {}, sel: null, gen: 0, rank: {} };
   var stage = $('stage');
   var meas = $('measure');
 
@@ -1149,7 +1399,7 @@ body::before {   /* eigene Ebene: ruckelfrei beim Scrollen und Animieren, auch a
     return linesVal;
   }
   /* Größen der Karte aus den Einstellungen: Zeilenhöhe folgt der Schrift, die Karte der Zeilenzahl */
-  function geom(W, list) {
+  function geom(W, list, maxL) {
     var T = CFG.schrift;
     var fs = T.groesse, lh = Math.round(fs * T.zeilenabstand);
     var g = {
@@ -1161,7 +1411,7 @@ body::before {   /* eigene Ebene: ruckelfrei beim Scrollen und Animieren, auch a
     g.L = computeLines(g, list);
     // Höhe deckeln: höchstens ca. 45 % des Fensters, längerer Text scrollt in der Karte
     var cap = Math.floor((Math.max(220, window.innerHeight * 0.45) - g.hd - 8) / lh);
-    g.L = Math.max(2, Math.min(g.L, cap));
+    g.L = Math.max(2, Math.min(g.L, cap, maxL || 99));
     g.bh = g.hd + g.L * lh + 8;
     return g;
   }
@@ -1178,18 +1428,16 @@ body::before {   /* eigene Ebene: ruckelfrei beim Scrollen und Animieren, auch a
     }
     return out;
   }
-  function dims() {
-    var W = stage.clientWidth;
-    var g = geom(W, S.list);
-    var f = CFG.faecher.groesse;
+  function plan(W, maxL, fk) {
+    var g = geom(W, S.list, maxL);
+    var f = CFG.faecher.groesse * (fk || 1);
     var cw = g.bw * f, ch = g.bh * f;
     var nFull = Math.min(CFG.faecher.anzahl, S.queue.length);
     var ss = 0.36, sw = g.bw * ss, sh = g.bh * ss;
     var wide = W >= g.bw + 2 * (sw + 14);
-    var bigTop = wide ? 4 : Math.round(sh + 14);
+    var bigTop = wide ? 18 : Math.round(sh + 14);
     var bigCy = bigTop + g.bh / 2;
-    var pileTop = (wide ? bigTop : 4) - (wide ? 20 : 6);   // Stapel und Ablage sitzen etwas höher, die Statuszeile weicht aus
-    $('statsBar').style.padding = wide ? '0 ' + Math.round(sw + 20) + 'px' : '';
+    var pileTop = wide ? 8 : 4;   // Stapel und Ablage sitzen etwas höher als die große Karte, aber mit Abstand zu den Filtern
     var full = fanSlots(nFull, cw, ch, W), minTop = 0, maxBot = 0;
     full.forEach(function (s) {
       var r = s.a * Math.PI / 180;
@@ -1197,8 +1445,20 @@ body::before {   /* eigene Ebene: ruckelfrei beim Scrollen und Animieren, auch a
       minTop = Math.min(minTop, s.dy - half);
       maxBot = Math.max(maxBot, s.dy + half);
     });
-    var fanCy = bigTop + g.bh + 16 - minTop;
+    var fanCy = bigTop + g.bh + 10 - minTop;
     var H = Math.round(nFull ? fanCy + maxBot + 14 : bigTop + g.bh + 10);
+    return { g: g, f: f, cw: cw, ch: ch, nFull: nFull, ss: ss, sw: sw, sh: sh, wide: wide, bigTop: bigTop, bigCy: bigCy, pileTop: pileTop, fanCy: fanCy, H: H };
+  }
+  function dims() {
+    var W = stage.clientWidth;
+    var r = plan(W, 99, 1);   // Größe der Karten bleibt immer wie eingestellt
+    // Ist das Fenster zu niedrig für Karte, Fächer und untere Leiste, steht die Leiste nicht fest unten: nichts liegt dann über dem Fächer
+    var dk = document.querySelector('.dock'), side = dk && getComputedStyle(dk).position === 'absolute';   // am Desktop liegt die Leiste neben dem Fächer und braucht keine Höhe
+    var dockH = dk && !side ? dk.offsetHeight : 0;
+    var need = stage.getBoundingClientRect().top + window.pageYOffset + r.H + 14 + dockH;
+    if (dk) dk.classList.toggle('free', !side && window.innerWidth >= 760 && need > window.innerHeight);   // Handy: Leiste bleibt immer unten kleben
+    var g = r.g, f = r.f, sw = r.sw, sh = r.sh, ss = r.ss, bigTop = r.bigTop, pileTop = r.pileTop, H = r.H;
+    $('statsBar').style.padding = r.wide ? '0 ' + Math.round(sw + 20) + 'px' : '';
     var st = stage.style;
     st.setProperty('--bw', g.bw + 'px'); st.setProperty('--bh', g.bh + 'px'); st.setProperty('--top', bigTop + 'px');
     st.setProperty('--fs', g.fs + 'px'); st.setProperty('--lh', g.lh + 'px'); st.setProperty('--hd', g.hd + 'px');
@@ -1211,9 +1471,9 @@ body::before {   /* eigene Ebene: ruckelfrei beim Scrollen und Animieren, auch a
     var h = $('shelf').style;
     h.left = '4px'; h.top = pileTop + 'px'; h.width = sw + 'px'; h.height = sh + 'px';
     h.setProperty('--hd', (g.hd * ss) + 'px'); h.setProperty('--plabel', Math.max(9, g.hd * ss * 0.5) + 'px');
-    $('endBox').style.top = bigCy + 'px';
+    $('endBox').style.top = r.bigCy + 'px';
     return {
-      hx: 4 + sw / 2, nFull: nFull, W: W, g: g, f: f, cw: cw, ch: ch, bigCy: bigCy, fanCy: fanCy, H: H, ss: ss,
+      hx: 4 + sw / 2, nFull: r.nFull, W: W, g: g, f: f, cw: r.cw, ch: r.ch, bigCy: r.bigCy, fanCy: r.fanCy, H: H, ss: ss,
       sx: W - 4 - sw / 2, sy: pileTop + sh / 2
     };
   }
@@ -1302,6 +1562,13 @@ body::before {   /* eigene Ebene: ruckelfrei beim Scrollen und Animieren, auch a
     e._anim.play();
   }
 
+  function cardNo(id) {
+    var r = S.rank[id];
+    if (r === undefined) return S.queue.indexOf(id) + 1;
+    var n = 1;
+    S.queue.forEach(function (o) { if (o !== id && S.rank[o] !== undefined && S.rank[o] < r) n++; });
+    return n;
+  }
   function layout() {
     var d = dims();
     var ids = S.queue.slice(0, CFG.faecher.anzahl);
@@ -1311,7 +1578,8 @@ body::before {   /* eigene Ebene: ruckelfrei beim Scrollen und Animieren, auch a
       var e = S.els[id];
       if (!e) return;
       var more = S.queue.length - CFG.faecher.anzahl, pos = S.queue.indexOf(id) + 1;
-      e.querySelector('.num').textContent = pos === ids.length && more > 0 ? '+' + more : pos;   // Platz im Stapel; die hinterste Karte zeigt, wie viele noch folgen
+      // Die Zahl gehört zur Karte: Reihenfolge beim Start, ohne die schon gelernten. Nach dem Mischen stehen die Zahlen deshalb durcheinander
+      e.querySelector('.num').textContent = pos === ids.length && more > 0 ? '+' + more : cardNo(id);
       if (id === S.sel) {
         e.classList.add('sel');
         e.style.zIndex = 40;
@@ -1409,6 +1677,7 @@ body::before {   /* eigene Ebene: ruckelfrei beim Scrollen und Animieren, auch a
     if (mode === 'faellig') S.queue.sort(function (x, y) { return (byId(x).box || 1) - (byId(y).box || 1); });
     if (CFG.lernen.mischen) shuffleArr(S.queue);
     S.total = S.list.length; S.done = 0; S.sel = null; S.round = { ok: 0, bad: 0 }; S.marks = {}; S.shelf = [];
+    S.rank = {}; S.queue.forEach(function (id, i) { S.rank[id] = i; });
     var has = S.list.length > 0;
     var filtered = !has && base.length > 0;   // Karten gibt es, nur der Filter ist leer
     $('studyEmpty').hidden = has;
@@ -1427,6 +1696,12 @@ body::before {   /* eigene Ebene: ruckelfrei beim Scrollen und Animieren, auch a
     fill(0);
     renderPile(); renderShelf();
     updateUI();
+    var dkf = document.querySelector('.dock');
+    var phone = dkf && window.innerWidth < 760 && getComputedStyle(dkf).position === 'sticky';
+    if (dkf && (dkf.classList.contains('free') || phone)) {   // niedriges Fenster: so weit scrollen, dass der Fächer ganz zu sehen ist (Handy: über der festen Leiste)
+      var want = stage.getBoundingClientRect().bottom + window.pageYOffset + 16 + (phone ? dkf.offsetHeight : 0) - window.innerHeight;
+      if (want > window.pageYOffset) window.scrollTo({ top: want, behavior: CFG.animation.an ? 'smooth' : 'auto' });
+    }
   }
   function renderPile() {
     var p = $('pile');
@@ -1481,6 +1756,7 @@ body::before {   /* eigene Ebene: ruckelfrei beim Scrollen und Animieren, auch a
       li.classList.toggle('done', i < step);
     });
     $('slot').classList.toggle('off', !!S.sel || !S.queue.length);
+    $('lcdN').textContent = S.done + '/' + S.total;   // Anzeige des Taschenrechners
   }
   /* Countdown: läuft, solange die Frage gezeigt wird; bei 0 dreht sich die Karte zur Lösung */
   var TM = { id: null, end: 0, iv: 0 };
@@ -2144,7 +2420,7 @@ body::before {   /* eigene Ebene: ruckelfrei beim Scrollen und Animieren, auch a
      und tut nichts, wenn keine Verbindung da ist. Nach einem Klick ersetzt er auf Chrome/Edge am Computer nur die App-Dateien im Ordner.
      Karten, Einstellungen und Lernstand werden nie angefasst. */
   var VERSION = '1.0.0';
-  var UPDATE_REPO = 'KONTO/REPO', UPDATE_ZWEIG = 'main', UPDATE_ORDNER = '';   // hier dein GitHub-Repo eintragen, zum Beispiel 'meinname/kartenbox'
+  var UPDATE_REPO = 'Exulizer/Karteikarten', UPDATE_ZWEIG = 'main', UPDATE_ORDNER = '';   // hier dein GitHub-Repo eintragen, zum Beispiel 'meinname/kartenbox'
   var UPD_ALLOWED = ['karteikarten.html', 'sw.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png'];   // nur diese Dateien darf ein Update schreiben
   var UPD_KEY = 'kartenbox-update-v1';
   function updEnabled() { return UPDATE_REPO !== 'KONTO/REPO' && /^[\w.-]+\/[\w.-]+$/.test(UPDATE_REPO) && /^[\w.\/-]+$/.test(UPDATE_ZWEIG) && !INST.web; }

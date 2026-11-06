@@ -61,14 +61,10 @@ python3 quelle/bauen.py
 
 baut `karteikarten.html` und `version.json` (mit Prüfsummen). Danach alles ins Repo laden.
 
-Das Repo für die Update-Suche steht in `quelle/kartenbox.js`:
-
-```js
-var UPDATE_REPO = 'Exulizer/Karteikarten', UPDATE_ZWEIG = 'main', UPDATE_ORDNER = '';
-```
-
 Neue Version veröffentlichen: Nummer und Text in `quelle/version.json` ändern, `bauen.py` ausführen, Dateien committen, Release mit passendem Tag anlegen. Siehe [CHANGELOG.md](CHANGELOG.md).
 
 ## Lizenz
 
 [MIT](LICENSE)
+
+Die Symbole in der Navigation sind von [Font Awesome Free](https://fontawesome.com/license/free) (CC BY 4.0), siehe [THIRD_PARTY.md](THIRD_PARTY.md).
