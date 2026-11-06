@@ -1,3 +1,5 @@
+<p align="center"><img src="kartenbox-banner.png" alt="Kartenbox: Karteikarten in einer einzigen HTML-Datei" width="100%"></p>
+
 # Kartenbox
 
 Karteikarten-App als **eine einzige HTML-Datei**. Läuft komplett offline, ohne Server, ohne Installation, ohne Konto. Datei öffnen, lernen.
@@ -6,7 +8,7 @@ Gelbe Karten im Fächer auf einem Schreibtisch, mit Fächern, Lernstand und Demo
 
 ## Loslegen
 
-1. [Neueste Version laden](../../releases/latest) und `kartenbox-….zip` entpacken.
+1. [Neueste Version laden](https://github.com/Exulizer/Karteikarten/releases/latest) und `kartenbox-….zip` entpacken.
 2. `karteikarten.html` im Browser öffnen (Doppelklick). Mehr braucht es nicht.
 
 Der Schalter **Demo** zeigt die App mit Beispielkarten.
@@ -59,10 +61,10 @@ python3 quelle/bauen.py
 
 baut `karteikarten.html` und `version.json` (mit Prüfsummen). Danach alles ins Repo laden.
 
-Vor dem ersten Release in `quelle/kartenbox.js` eintragen:
+Das Repo für die Update-Suche steht in `quelle/kartenbox.js`:
 
 ```js
-var UPDATE_REPO = 'KONTO/REPO', UPDATE_ZWEIG = 'main', UPDATE_ORDNER = '';
+var UPDATE_REPO = 'Exulizer/Karteikarten', UPDATE_ZWEIG = 'main', UPDATE_ORDNER = '';
 ```
 
 Neue Version veröffentlichen: Nummer und Text in `quelle/version.json` ändern, `bauen.py` ausführen, Dateien committen, Release mit passendem Tag anlegen. Siehe [CHANGELOG.md](CHANGELOG.md).
