@@ -1,10 +1,10 @@
 {
-  "version": "1.0.0",
-  "hinweis": "Erste Version mit Update-Hinweis.",
+  "version": "1.0.1",
+  "hinweis": "Neue Navigation, Zubehör am Schreibtisch, Filterleiste klebt oben, bessere Handy-Ansicht.",
   "files": [
     {
       "pfad": "karteikarten.html",
-      "sha256": "bfde1ed5f865936a00bc26f767f5da930064c0d25fe37d6d0a4b806888fb4bd5",
+      "sha256": "b0ccd937ad7770493efb36fe492641716e7a513003cf92ddfa678d02462bbe93",
       "groesse": 145538,
       "optional": false
     },
