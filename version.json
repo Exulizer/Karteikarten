@@ -1,0 +1,42 @@
+{
+  "version": "1.0.0",
+  "hinweis": "Erste Version mit Update-Hinweis.",
+  "files": [
+    {
+      "pfad": "karteikarten.html",
+      "sha256": "54f73ee2d8a981e696e8ae6a8a24a55d4763ef1865db866802fb8fd53558f84d",
+      "groesse": 122535,
+      "optional": false
+    },
+    {
+      "pfad": "sw.js",
+      "sha256": "65931ab7d9f0e24b268158a48a0724f9d741fcf2ab7197b5d3a65505a5a358e4",
+      "groesse": 1308,
+      "optional": true
+    },
+    {
+      "pfad": "manifest.webmanifest",
+      "sha256": "52a17091c1358a1e1d760a2405c561a3d301c0d728bf9f5cbbfed09656df45b9",
+      "groesse": 561,
+      "optional": true
+    },
+    {
+      "pfad": "icon.svg",
+      "sha256": "5de88332cf4ad67189f6216326a1f3034c3d56db8170a690aefec47e8edbd43f",
+      "groesse": 717,
+      "optional": true
+    },
+    {
+      "pfad": "icon-192.png",
+      "sha256": "69396637dd62ce91feca370be7b72124c86fce0cbcf52f14c62daa203ee966f0",
+      "groesse": 9173,
+      "optional": true
+    },
+    {
+      "pfad": "icon-512.png",
+      "sha256": "776fb7730a6d70f73dc968eb418a10253277aee9ab9a3158c7a79b1718a55db7",
+      "groesse": 29185,
+      "optional": true
+    }
+  ]
+}

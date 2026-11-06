@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "cats": ["Allgemein", "Englisch", "3D-Druck"],
+  "cards": [
+    { "id": "bsp01", "cat": "Allgemein", "q": "Wie heißt die Hauptstadt von Australien?", "a": "Canberra. Nicht Sydney und nicht Melbourne." },
+    { "id": "bsp02", "cat": "Allgemein", "q": "Wie viele Minuten hat ein Tag?", "a": "1440 Minuten (24 mal 60)." },
+    { "id": "bsp03", "cat": "Allgemein", "q": "Warum ist der Himmel tagsüber blau?", "a": "Das Sonnenlicht wird in der Luft gestreut. Kurzwelliges blaues Licht wird dabei viel stärker gestreut als langwelliges rotes. Deshalb kommt das Blau aus allen Richtungen zu uns." },
+    { "id": "bsp04", "cat": "Englisch", "q": "to come across", "a": "zufällig begegnen, auf etwas stoßen" },
+    { "id": "bsp05", "cat": "Englisch", "q": "Was ist der Unterschied zwischen \"since\" und \"for\"?", "a": "\"since\" nennt den Startpunkt (since Monday, since 2020). \"for\" nennt die Dauer (for three days, for two years)." },
+    { "id": "bsp06", "cat": "Englisch", "q": "the weather", "a": "das Wetter" },
+    { "id": "bsp07", "cat": "3D-Druck", "q": "Was bedeutet PLA?", "a": "Polylactid. Ein Kunststoff aus Pflanzenstärke, einfach zu drucken und bei niedriger Temperatur." },
+    { "id": "bsp08", "cat": "3D-Druck", "q": "Wozu dient das Retraction beim Drucken?", "a": "Der Filamentstrang wird vor einer Leerfahrt kurz zurückgezogen, damit nichts aus der Düse nachläuft und keine Fäden entstehen." }
+  ]
+}

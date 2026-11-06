@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "cats": ["Mathe", "Physik", "Chemie", "Biologie", "Geschichte", "Erdkunde"],
+  "cards": [
+    { "id": "demo01", "cat": "Mathe", "q": "Wie lautet der Satz des Pythagoras?", "a": "In einem rechtwinkligen Dreieck gilt a² + b² = c². c ist die Hypotenuse, also die Seite gegenüber dem rechten Winkel." },
+    { "id": "demo02", "cat": "Mathe", "q": "Löse die Gleichung 3x + 5 = 20.", "a": "Erst 5 abziehen: 3x = 15. Dann durch 3 teilen: x = 5." },
+    { "id": "demo03", "cat": "Mathe", "q": "Wie berechnet man den Flächeninhalt eines Kreises mit dem Radius r?", "a": "A = π · r². Beispiel: r = 3 cm ergibt etwa 28,3 cm²." },
+    { "id": "demo04", "cat": "Physik", "q": "Wie berechnet man die Geschwindigkeit?", "a": "v = s : t (Strecke geteilt durch Zeit). 120 km in 2 Stunden ergeben 60 km/h." },
+    { "id": "demo05", "cat": "Physik", "q": "Wie lautet das Ohmsche Gesetz?", "a": "U = R · I (Spannung = Widerstand mal Stromstärke). Bei 20 Ω und 0,5 A sind das 10 V." },
+    { "id": "demo06", "cat": "Chemie", "q": "Wie lauten die chemischen Formeln von Wasser und Kohlenstoffdioxid?", "a": "Wasser: H₂O. Kohlenstoffdioxid: CO₂." },
+    { "id": "demo07", "cat": "Biologie", "q": "Was passiert bei der Fotosynthese?", "a": "Pflanzen bilden mit Lichtenergie aus Wasser und Kohlenstoffdioxid Traubenzucker (Glucose) und Sauerstoff. Das geschieht in den Chloroplasten." },
+    { "id": "demo08", "cat": "Geschichte", "q": "Wann fiel die Berliner Mauer und wann wurde Deutschland wiedervereinigt?", "a": "Die Mauer fiel am 9. November 1989. Die Wiedervereinigung war am 3. Oktober 1990." },
+    { "id": "demo09", "cat": "Geschichte", "q": "Wann begann der Erste Weltkrieg und was war der Auslöser?", "a": "1914. Auslöser war das Attentat von Sarajevo auf den österreichischen Thronfolger Franz Ferdinand." },
+    { "id": "demo10", "cat": "Erdkunde", "q": "Wie heißt die Hauptstadt von Kanada?", "a": "Ottawa. Nicht Toronto und nicht Montreal." }
+  ]
+}

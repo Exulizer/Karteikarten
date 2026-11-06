@@ -1,0 +1,37 @@
+{
+  "_hinweis": "Standardwerte der Kartenbox. Zum Ändern die Werte in einstellungen.js eintragen oder im Tab Optionen einstellen.",
+  "schrift": {
+    "groesse": 18,
+    "zeilenabstand": 1.6,
+    "art": "serif"
+  },
+  "karte": {
+    "breite": 420,
+    "zeilenMin": 5,
+    "zeilenMax": 12,
+    "automatischeHoehe": true
+  },
+  "faecher": {
+    "anzahl": 5,
+    "groesse": 0.55,
+    "winkel": 10,
+    "unschaerfe": 7
+  },
+  "animation": {
+    "an": true,
+    "tempo": 1
+  },
+  "lernen": {
+    "mischen": false,
+    "tastatur": true,
+    "timer": true,
+    "sekunden": 30,
+    "tagesziel": 10
+  },
+  "design": {
+    "thema": "auto"
+  },
+  "update": {
+    "pruefen": true
+  }
+}
