@@ -1,5 +1,5 @@
 /* Kartenbox Service Worker: legt die App beim ersten Besuch im Cache, danach läuft sie offline. */
-var CACHE = 'kartenbox-v1';
+var CACHE = 'kartenbox-v2';
 var FILES = ['./', './karteikarten.html', './einstellungen.js', './karteikarten.js', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) {

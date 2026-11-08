@@ -61,13 +61,24 @@
     <div class="stage" id="stage" hidden>
       <div class="slot" id="slot">Wähle unten eine Karte</div>
       <div class="pile" id="pile"></div>
+      <div class="pwrap" id="pwrap"><div class="player" id="player" hidden>
+        <div class="deck" aria-hidden="true"><i class="reel"></i><span class="alcd" id="autoLcd">––</span><i class="reel"></i></div>
+        <button class="btn primary" id="autoBtn" type="button" aria-pressed="false" title="Karten automatisch abspielen"><svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true"><path class="pl" d="M5 3.5v13l11-6.5z" fill="currentColor"/><path class="st" d="M5 4h4v12H5zM11 4h4v12h-4z" fill="currentColor"/></svg><span id="autoTxt">Auto</span></button>
+        <button class="btn" id="autoMode" type="button" title="Reihenfolge beim Abspielen">Reihe</button>
+      </div></div>
       <button class="pile shelf" id="shelf" type="button" title="Ablage zurück in den Fächer" hidden></button>
       <div class="endbox" id="endBox" hidden>
         <p id="endMsg">Alle Karten geschafft.</p>
         <button class="btn primary" id="newRound" type="button">Neue Runde</button>
+        <button class="btn" id="examBtn" type="button">Prüfung</button>
       </div>
     </div>
     <div class="dock" id="dock" hidden>
+    <div class="typerow" id="typeRow" hidden>
+      <input type="text" id="typeIn" placeholder="Deine Antwort" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Deine Antwort" disabled>
+      <button class="btn" id="typeBtn" type="button" disabled>Prüfen</button>
+      <span id="typeRes" role="status"></span>
+    </div>
     <ol class="steps" id="steps" hidden>
       <li><b>1</b>Karte wählen</li>
       <li><b>2</b>Lösung ansehen</li>
@@ -93,11 +104,20 @@
     <div id="step1">
       <p class="step-label">1. Frage</p>
       <textarea id="newQ" placeholder="Deine Frage"></textarea>
+      <p class="hint">Lückentext: Setze das gesuchte Wort in {{doppelte Klammern}}.</p>
+      <div class="imgpick">
+        <button class="btn" id="newImgBtn" type="button">Bild zur Frage</button>
+        <input type="file" id="newImgFile" accept="image/*" hidden>
+        <img id="newImgPrev" alt="" hidden>
+        <button class="btn" id="newImgDel" type="button" hidden>Bild entfernen</button>
+      </div>
       <div class="row"><button class="btn primary" id="toStep2" type="button">Weiter zur Lösung</button></div>
     </div>
     <div id="step2" hidden>
       <p class="step-label">2. Lösung</p>
       <textarea id="newA" placeholder="Die Lösung"></textarea>
+      <label class="step-label" for="newTags">Tags (mit Komma, kein Muss)</label>
+      <input type="text" id="newTags" maxlength="120" autocomplete="off" placeholder="zum Beispiel Prüfung, Kapitel 3">
       <div class="row">
         <button class="btn" id="backStep1" type="button">Zurück</button>
         <button class="btn primary" id="saveCard" type="button">Karte speichern</button>
@@ -112,6 +132,10 @@
       <article class="hq"><h3>Wie lerne ich?</h3><p>Tippe im Fächer eine Karte an. Dann „Lösung zeigen“ und „Gewusst“ oder „Nochmal“. Gewusste Karten kommen später wieder, schwere früher.</p></article>
       <article class="hq"><h3>Was macht „Weiter“?</h3><p>Die Karte geht in die Ablage links oben und bekommt einen blauen Reiter. Ein Klick auf die Ablage holt sie zurück. Ist die Runde leer, kommt die Ablage von selbst.</p></article>
       <article class="hq"><h3>Was sind Marker und Pinnadel?</h3><p>Rosa heißt Nochmal, Blau heißt Später. Mit der Pinnadel (Taste P) heftest du eine Karte an. Der Modus „Angeheftet“ übt nur diese Karten.</p></article>
+      <article class="hq"><h3>Welche Lernarten gibt es?</h3><p>Unter Optionen, Lernarten: Rückwärts (erst die Lösung), Antwort tippen (die Karte dreht sich und sagt, ob es stimmt) und Vorlesen mit der Stimme deines Geräts. Eine Prüfung stellt zufällige Karten ohne Wiederholung und endet mit einer Note.</p></article>
+      <article class="hq"><h3>Wie mache ich einen Lückentext?</h3><p>Setze beim Anlegen das Wort in doppelte Klammern: „Der {{Mond}} umkreist die Erde.“ Vorne ist das Wort eine Lücke, hinten steht der ganze Satz.</p></article>
+      <article class="hq"><h3>Wie bekommen Rubriken Farben?</h3><p>Beim Anlegen einer Rubrik wählst du eine Farbe. Im Tab „Rubriken“ änderst du sie mit „Ändern“. Die Farbe erscheint als Punkt und als Streifen oben auf der Karte.</p></article>
+      <article class="hq"><h3>Was zeigt die Statistik?</h3><p>Ein Klick auf „Serie … · Statistik“ zeigt die letzten 14 Tage, einen Kalender mit Stempel für jedes erreichte Tagesziel, den Karteikasten und deine schwersten Karten.</p></article>
       <article class="hq"><h3>Welche Tasten gibt es?</h3><p>Leertaste dreht die Karte. Pfeil rechts: Gewusst. Pfeil links: Nochmal. P heftet an, Esc legt zurück, 1 bis 7 wählt eine Karte.</p></article>
     </div>
     <h2 class="hh">Speichern und Teilen</h2>
@@ -119,6 +143,7 @@
       <article class="hq"><h3>Wo liegen meine Karten?</h3><p>Im Browser. In Chrome oder Edge am Computer wählst du unter Optionen den Ordner mit karteikarten.html. Dann speichert die Seite dort bei jeder Änderung.</p></article>
       <article class="hq"><h3>Wie sichere ich meine Karten?</h3><p>Tab „Karten“, dann „Karten speichern“. Ohne Ordner-Zugriff lädt die Seite karteikarten.js herunter. Lege sie neben karteikarten.html, dann findet die Seite sie beim Start.</p></article>
       <article class="hq"><h3>Wie teile ich Karten?</h3><p>Tab „Karten“, dann „Teilen“. Am Handy wählst du E-Mail oder Discord. Am Computer wird karteikarten.json heruntergeladen: an die Mail hängen oder in Discord ziehen. Dein Lernstand bleibt bei dir.</p></article>
+      <article class="hq"><h3>Kann ich Bilder, Tags und Tabellen nutzen?</h3><p>Ja. Beim Anlegen fügst du ein Bild zur Frage hinzu (auch per Einfügen). Tags und Suche findest du im Tab „Karten“. „Karten laden“ liest auch CSV, Anki-Textexport und Quizlet-Export. „Tabelle (CSV)“ speichert alles für Excel oder Anki, „Drucken“ macht einen Bogen mit Frage und Lösung.</p></article>
       <article class="hq"><h3>Wie nutze ich Karten von anderen?</h3><p>Die Datei speichern, dann Tab „Karten“ und „Karten laden“. Die Karten kommen dazu, deine eigenen bleiben. Doppelte werden übersprungen.</p></article>
       <article class="hq"><h3>Wie ziehe ich auf ein anderes Gerät um?</h3><p>„Karten speichern“, die Datei aufs andere Gerät bringen und dort „Karten laden“. Deinen Lernstand nimmt nur der Ordner mit.</p></article>
     </div>
@@ -145,8 +170,11 @@
       <button class="btn primary" id="exportBtn" type="button">Karten speichern</button>
       <button class="btn" id="importBtn" type="button">Karten laden</button>
       <button class="btn" id="shareBtn" type="button">Teilen</button>
-      <input type="file" id="importFile" accept=".json,.js,application/json,text/javascript" hidden>
+      <button class="btn" id="csvBtn" type="button">Tabelle (CSV)</button>
+      <button class="btn" id="printBtn" type="button">Drucken</button>
+      <input type="file" id="importFile" accept=".json,.js,.csv,.tsv,.txt,application/json,text/javascript,text/csv,text/plain" hidden>
     </div>
+    <input type="search" id="listSearch" class="search" placeholder="Suchen in Frage, Lösung, Tags" autocomplete="off" aria-label="Karten suchen">
     <div class="chips" id="listChips"></div>
     <div class="list" id="list"></div>
   </section>
@@ -170,6 +198,13 @@
 </div>
 
 <div id="measure" aria-hidden="true"></div>
+<div id="printArea" aria-hidden="true"></div>
+
+<dialog id="statDlg">
+  <h2>Statistik</h2>
+  <div id="statBody"></div>
+  <div class="row"><button class="btn primary" id="statClose" type="button">Schließen</button></div>
+</dialog>
 
 <dialog id="editDlg">
   <h2>Karte bearbeiten</h2>
@@ -179,6 +214,14 @@
   <textarea id="editQ"></textarea>
   <label for="editA">Lösung</label>
   <textarea id="editA"></textarea>
+  <label for="editTags">Tags (mit Komma)</label>
+  <input type="text" id="editTags" maxlength="120" autocomplete="off">
+  <div class="imgpick">
+        <button class="btn" id="editImgBtn" type="button">Bild zur Frage</button>
+        <input type="file" id="editImgFile" accept="image/*" hidden>
+        <img id="editImgPrev" alt="" hidden>
+        <button class="btn" id="editImgDel" type="button" hidden>Bild entfernen</button>
+      </div>
   <div class="row">
     <button class="btn" id="editCancel" type="button">Abbrechen</button>
     <button class="btn primary" id="editSave" type="button">Speichern</button>
@@ -188,6 +231,8 @@
 <dialog id="nameDlg">
   <h2 id="nameTitle">Rubrik</h2>
   <input type="text" id="nameInput" maxlength="40" autocomplete="off">
+  <p class="lbl" style="margin:12px 0 6px">Farbe</p>
+  <div class="swatches" id="nameColors" role="radiogroup" aria-label="Farbe der Rubrik"></div>
   <p class="err" id="nameErr"></p>
   <div class="row" style="margin-top:6px">
     <button class="btn" id="nameCancel" type="button">Abbrechen</button>

@@ -19,6 +19,10 @@ Der Schalter **Demo** zeigt die App mit Beispielkarten.
 - **Gewusst** und **Nochmal**: Nochmal-Karten wandern in die Ablage
 - Karten **anheften** (Pin) und mit Markern kennzeichnen (Nochmal rosa, Später blau)
 - Modi: alle, fällig, schwer, angeheftet
+- Lernarten: **Lückentext**, **Antwort tippen**, **rückwärts**, **Prüfung mit Note**, **Vorlesen**
+- **Bilder**, **Tags** und Suche
+- Import aus **CSV, Anki und Quizlet**, Export als CSV, **Drucken**
+- **Statistik** mit Kalender und Stempeln
 - Karten **speichern, laden und teilen** (Datei per E-Mail, Discord …)
 - Hilfe mit FAQ direkt in der App
 - Hell und Dunkel, schmale Ansicht für Handys

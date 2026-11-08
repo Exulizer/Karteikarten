@@ -2,7 +2,22 @@
   'use strict';
   var DEF = 'Allgemein';
   var KEY = 'karteikarten-v2', OLD = 'karteikarten-v1', SKEY = 'kartenbox-einstellungen-v1';
-  var db = { cats: [DEF], cards: [], log: {} };
+  var db = { cats: [DEF], cards: [], log: {}, colors: {} };
+  /* Rubrikfarben: Klebe-Etiketten in gedeckten Tönen (Gelb fehlt, die Karten sind gelb) */
+  var PALETTE = ['#e5484d', '#f08a24', '#3fa66b', '#14a3a3', '#3b82f6', '#8b5cf6', '#e0529c', '#8a6d4b', '#6b7a8c'];
+  var PNAMES = ['Rot', 'Orange', 'Grün', 'Türkis', 'Blau', 'Violett', 'Rosa', 'Braun', 'Grau'];
+  function nextColor() {
+    var used = {}; Object.keys(db.colors).forEach(function (k) { used[db.colors[k]] = 1; });
+    for (var i = 0; i < PALETTE.length; i++) if (!used[PALETTE[i]]) return PALETTE[i];
+    return PALETTE[Object.keys(db.colors).length % PALETTE.length];
+  }
+  function fixColors() { db.cats.forEach(function (c) { if (PALETTE.indexOf(db.colors[c]) < 0) db.colors[c] = nextColor(); }); Object.keys(db.colors).forEach(function (k) { if (db.cats.indexOf(k) < 0) delete db.colors[k]; }); }
+  function catColor(n) {   // auch für Demo-Rubriken, die nicht in deinen Karten liegen
+    if (db.colors[n]) return db.colors[n];
+    var di = DEMO ? DEMO.cats.indexOf(n) : -1; if (di >= 0) return PALETTE[di % PALETTE.length];
+    var h = 0; for (var i = 0; i < n.length; i++) h = (h * 31 + n.charCodeAt(i)) % 997;
+    return PALETTE[h % PALETTE.length];
+  }
   var studyDirty = true;
   var current = 'study';
 
@@ -15,7 +30,46 @@
   }
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
   function isStr(s) { return typeof s === 'string' && s.trim() !== ''; }
-  function validCard(c) { return c && isStr(c.q) && isStr(c.a); }
+  function validCard(c) { return c && isStr(c.q) && (isStr(c.a) || hasCloze(c.q)); }
+  /* Lückentext: {{Wort}} in der Frage wird auf der Vorderseite zur Lücke, hinten steht der volle Satz */
+  function hasCloze(q) { return /\{\{.+?\}\}/.test(q); }
+  function clozeWords(q) { var m = [], re = /\{\{(.+?)\}\}/g, x; while ((x = re.exec(q))) m.push(x[1].trim()); return m; }
+  function qShow(c) { return hasCloze(c.q) ? c.q.replace(/\{\{.+?\}\}/g, '[ … ]') : c.q; }
+  function aShow(c) { return hasCloze(c.q) ? c.q.replace(/\{\{(.+?)\}\}/g, '$1') + (c.a && c.a !== clozeWords(c.q).join(', ') ? '\n\n' + c.a : '') : c.a; }
+  function cleanTags(t) {
+    var out = [];
+    (Array.isArray(t) ? t : []).forEach(function (x) {
+      x = String(x).trim().replace(/\s+/g, ' ').slice(0, 24);
+      if (x && out.length < 8 && !out.some(function (y) { return sameName(x, y); })) out.push(x);
+    });
+    return out;
+  }
+  function parseTags(str) { return cleanTags(String(str || '').split(/[,;]+/)); }
+  function okImg(v) { return typeof v === 'string' && v.length < 600000 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(v); }
+  /* Vergleich beim Tippen: Groß/Klein, Akzente und Satzzeichen egal */
+  function flat(t) { return String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ß/g, 'ss').replace(/[^a-z0-9\u00c0-\uffff ]+/g, ' ').replace(/\s+/g, ' ').trim(); }
+  function lev(a, b) {
+    var p = [], i, j, c;
+    for (j = 0; j <= b.length; j++) p[j] = j;
+    for (i = 1; i <= a.length; i++) {
+      var prev = p[0]; p[0] = i;
+      for (j = 1; j <= b.length; j++) { c = p[j]; p[j] = Math.min(p[j] + 1, p[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1)); prev = c; }
+    }
+    return p[b.length];
+  }
+  function grade(typed, want) {   // 2 richtig, 1 fast, 0 falsch
+    var t = flat(typed), w = flat(want);
+    if (!t) return 0;
+    if (t === w) return 2;
+    if (w.length > 28) {
+      var tw = w.split(' ').filter(function (x) { return x.length > 2; }), hit = 0;
+      tw.forEach(function (x) { if (t.indexOf(x) >= 0) hit++; });
+      var r = tw.length ? hit / tw.length : 0;
+      return r >= 0.8 ? 2 : r >= 0.5 ? 1 : 0;
+    }
+    var d = lev(t, w);
+    return d <= Math.floor(w.length / 8) ? 2 : d <= Math.max(1, Math.floor(w.length / 4)) ? 1 : 0;
+  }
   function ensureCat(n) { if (db.cats.indexOf(n) < 0) db.cats.push(n); }
   function countIn(cat) { return db.cards.filter(function (c) { return c.cat === cat; }).length; }
   function byId(id) {
@@ -57,7 +111,7 @@
     karte: { breite: 420, zeilenMin: 5, zeilenMax: 12, automatischeHoehe: true },
     faecher: { anzahl: 5, groesse: 0.55, winkel: 10, unschaerfe: 7 },
     animation: { an: true, tempo: 1 },
-    lernen: { mischen: false, tastatur: true, timer: true, sekunden: 30, tagesziel: 10 },
+    lernen: { mischen: false, tastatur: true, timer: true, sekunden: 30, tagesziel: 10, richtung: 'vor', tippen: false, vorlesen: 'aus', sprache: 'de-DE', pruefung: 10, auto: 6, player: false },
     design: { thema: 'auto' },
     update: { pruefen: true }
   };
@@ -96,7 +150,14 @@
     s.lernen.tastatur = s.lernen.tastatur !== false;
     s.lernen.timer = s.lernen.timer !== false;
     s.lernen.sekunden = Math.round(num(s.lernen.sekunden, 10, 60, 30));
+    s.lernen.player = s.lernen.player === true;
+    s.lernen.auto = Math.round(num(s.lernen.auto, 3, 30, 6));
     s.lernen.tagesziel = Math.round(num(s.lernen.tagesziel, 0, 200, 10));
+    if (['vor', 'rueck', 'misch'].indexOf(s.lernen.richtung) < 0) s.lernen.richtung = 'vor';
+    s.lernen.tippen = s.lernen.tippen === true;
+    if (['aus', 'frage', 'loesung', 'beides'].indexOf(s.lernen.vorlesen) < 0) s.lernen.vorlesen = 'aus';
+    if (!/^[a-z]{2,3}-[A-Z]{2}$/.test(s.lernen.sprache)) s.lernen.sprache = 'de-DE';
+    s.lernen.pruefung = Math.round(num(s.lernen.pruefung, 3, 100, 10));
     if (['auto', 'hell', 'dunkel'].indexOf(s.design.thema) < 0) s.design.thema = 'auto';
     s.update.pruefen = s.update.pruefen !== false;
     return s;
@@ -148,18 +209,22 @@
     if (Array.isArray(d)) arr = d;
     else if (d && Array.isArray(d.cards)) { arr = d.cards; if (Array.isArray(d.cats)) cats = d.cats; }
     else throw new Error('format');
-    var out = { cats: [], cards: [], log: {} };
+    var out = { cats: [], cards: [], log: {}, colors: {} };
     if (d && d.log && typeof d.log === 'object' && !Array.isArray(d.log)) {
       Object.keys(d.log).forEach(function (k) {
         var v = d.log[k];
         if (/^\d{4}-\d{2}-\d{2}$/.test(k) && v && isFinite(v.n) && v.n > 0) out.log[k] = { n: Math.round(v.n), ok: Math.max(0, Math.round(Number(v.ok) || 0)) };
+          if (Array.isArray(v.c)) { var cc = v.c.filter(function (e) { return Array.isArray(e) && typeof e[0] === 'string' && e[0].length < 80; }).slice(-400).map(function (e) { return [e[0], e[1] ? 1 : 0]; }); if (cc.length) out.log[k].c = cc; }
       });
     }
     function add(c) { c = String(c).trim(); if (c && out.cats.indexOf(c) < 0) out.cats.push(c); return c; }
     cats.forEach(function (c) { if (isStr(c)) add(c); });
     arr.filter(validCard).forEach(function (c) {
       var cat = isStr(c.cat) ? add(c.cat) : add(DEF);
-      var o = { id: isStr(c.id) ? c.id : uid(), q: c.q.trim(), a: c.a.trim(), cat: cat };
+      var o = { id: isStr(c.id) ? c.id : uid(), q: c.q.trim(), a: isStr(c.a) ? c.a.trim() : clozeWords(c.q).join(', '), cat: cat };
+      var tg = cleanTags(c.tags); if (tg.length) o.tags = tg;
+      if (okImg(c.img)) o.img = c.img;
+      if (c.miss > 0) o.miss = Math.min(99, Math.round(c.miss));
       if (isFinite(c.n) && c.n > 0) {   // Lernstand: Karteikasten 1 bis 5
         o.n = Math.round(c.n);
         o.box = Math.min(5, Math.max(1, Math.round(Number(c.box) || 1)));
@@ -170,6 +235,7 @@
       out.cards.push(o);
     });
     if (!out.cats.length) out.cats.push(DEF);
+    if (d && d.colors && typeof d.colors === 'object') out.cats.forEach(function (c) { if (PALETTE.indexOf(d.colors[c]) >= 0) out.colors[c] = d.colors[c]; });
     return out;
   }
   /* Alte Demo-Karten (früher als echte Karten gespeichert) entfernen; leer gewordene Demo-Rubriken auch */
@@ -192,11 +258,11 @@
       if (raw) {
         var d = parseData(JSON.parse(raw));
         var cut = purgeDemo(d);
-        db.cats = d.cats; db.cards = d.cards; db.log = d.log;
+        db.cats = d.cats; db.cards = d.cards; db.log = d.log; db.colors = d.colors;
         if (cut) persist();
       } else if (window.KARTENBOX_KARTEN) {
         var kd = parseData(window.KARTENBOX_KARTEN);
-        db.cats = kd.cats; db.cards = kd.cards; db.log = kd.log;
+        db.cats = kd.cats; db.cards = kd.cards; db.log = kd.log; db.colors = kd.colors;
       } else {
         var o = localStorage.getItem(OLD);
         if (o) {
@@ -207,6 +273,7 @@
     } catch (e) {}
     db.cards.forEach(function (c) { if (!isStr(c.cat)) c.cat = DEF; ensureCat(c.cat); });
     if (!db.cats.length) db.cats = [DEF];
+    fixColors();
   }
   function persist() {
     try { localStorage.setItem(KEY, JSON.stringify(db)); }
@@ -296,7 +363,7 @@
   }
   function takeData(data) {
     var cut = purgeDemo(data);
-    db.cats = data.cats; db.cards = data.cards; db.log = data.log;
+    db.cats = data.cats; db.cards = data.cards; db.log = data.log; db.colors = data.colors; fixColors();
     persist();
     if (cut) scheduleWrite();
     studyDirty = true;
@@ -372,6 +439,7 @@
     opts.forEach(function (o) {
       var b = el('button', 'chip', o.label);
       b.type = 'button';
+      if (o.color) { var dt = el('i', 'dot'); dt.style.background = o.color; b.insertBefore(dt, b.firstChild); }
       b.setAttribute('aria-pressed', String(o.v === val));
       if (o.n != null) b.appendChild(el('span', null, o.n));
       b.addEventListener('click', function () { pick(o.v); });
@@ -385,16 +453,29 @@
     }
   }
   function catOpts(withAll) {
-    var o = db.cats.map(function (c) { return { v: c, label: c, n: countIn(c) }; });
+    var o = db.cats.map(function (c) { return { v: c, label: c, n: countIn(c), color: catColor(c) }; });
     return withAll ? [{ v: null, label: 'Alle', n: db.cards.length }].concat(o) : o;
   }
 
   var nameCb = null, confCb = null;
-  function askName(title, initial, cb) {
+  var nameColor = '';
+  function drawSwatches() {
+    var host = $('nameColors'); host.textContent = '';
+    PALETTE.forEach(function (c, i) {
+      var b = el('button', 'sw'); b.type = 'button'; b.style.background = c;
+      b.setAttribute('role', 'radio'); b.setAttribute('aria-label', PNAMES[i]); b.title = PNAMES[i];
+      b.setAttribute('aria-checked', String(c === nameColor));
+      b.addEventListener('click', function () { nameColor = c; drawSwatches(); });
+      host.appendChild(b);
+    });
+  }
+  function askName(title, initial, cb, color) {
     $('nameTitle').textContent = title;
     $('nameInput').value = initial || '';
     $('nameErr').textContent = '';
     nameCb = cb;
+    nameColor = color || nextColor();
+    drawSwatches();
     $('nameDlg').showModal();
     $('nameInput').focus();
     $('nameInput').select();
@@ -402,7 +483,7 @@
   function submitName() {
     var v = $('nameInput').value.trim();
     if (!v) { $('nameErr').textContent = 'Bitte einen Namen eingeben.'; return; }
-    var err = nameCb(v);
+    var err = nameCb(v, nameColor);
     if (err) { $('nameErr').textContent = err; return; }
     $('nameDlg').close();
   }
@@ -422,24 +503,86 @@
   $('confCancel').addEventListener('click', function () { $('confDlg').close(); });
   $('confOk').addEventListener('click', function () { $('confDlg').close(); if (confCb) confCb(); });
 
-  function createCat(n) {
+  function createCat(n, color) {
     if (db.cats.some(function (c) { return sameName(c, n); })) return 'Diese Rubrik gibt es schon.';
     db.cats.push(n);
+    db.colors[n] = PALETTE.indexOf(color) >= 0 ? color : nextColor();
     save();
     return '';
   }
 
   /* ===== Tabs ===== */
+  /* "Neu"-Streifen in den Optionen: nur beim ersten Besuch nach dem Update, danach nie wieder */
+  /* Zubehör (Notizzettel links, Taschenrechner rechts) rutscht 0,9 s nach dem Laden unter der Schreibunterlage hervor.
+     Nur bei großen Fenstern, wo beides außerhalb der Unterlage liegt. Die Unterlage verdeckt es per clip-path, das mitwandert. */
+  var accIntro = true, accTimer = 0, accAnims = [];
+  function accOK() { return window.innerWidth >= 1340 && CFG.animation.an && !!(window.CSS && CSS.supports && CSS.supports('translate', '1px 0')); }
+  function accStop() { clearTimeout(accTimer); accAnims.forEach(function (a) { try { a.cancel(); } catch (e) {} }); accAnims = []; $('dock').classList.remove('acc-wait'); $('player').classList.remove('acc-wait'); $('dock').style.clipPath = ''; $('pwrap').style.clipPath = ''; }
+  /* Die Unterlage verdeckt das Zubehör: Der ruhende Behälter bekommt ein Loch in Größe der Unterlage. Nur das Zubehör wandert, so flackert nichts. */
+  function accClip() {
+    var dk = $('dock').getBoundingClientRect(), pad = document.querySelector('.wrap').getBoundingClientRect(), L = Math.round(pad.left - dk.left), R = Math.round(pad.right - dk.left);
+    $('dock').style.clipPath = 'polygon(-5000px -5000px, ' + L + 'px -5000px, ' + L + 'px 5000px, ' + R + 'px 5000px, ' + R + 'px -5000px, 5000px -5000px, 5000px 6000px, -5000px 6000px)';
+  }
+  function accShift(e, left) {   // so weit schieben, dass es ganz unter der Unterlage liegt
+    var pad = document.querySelector('.wrap').getBoundingClientRect(), r = e.getBoundingClientRect();
+    return (left ? pad.left - r.left + 8 : pad.right - r.right - 8) + 'px 0';
+  }
+  function accRun(out) {   // out: zurück unter die Unterlage. Gibt ein Versprechen zurück, das am Ende erfüllt ist.
+    var dk = $('dock'), T = CFG.animation.tempo, rnd = function (lo, hi) { return lo + Math.random() * (hi - lo); }, ease = 'cubic-bezier(.2, .8, .2, 1)', list = [];
+    accClip();
+    [['.steps', true], ['.controls', false]].forEach(function (p) {
+      var e = dk.querySelector(p[0]); if (!e || e.hidden) return;
+      var f = [{ translate: accShift(e, p[1]) }, { translate: '0 0' }];
+      var an = e.animate(out ? [f[1], f[0]] : f, { duration: (out ? rnd(450, 650) : rnd(700, 950)) / T, easing: out ? 'cubic-bezier(.5, 0, .8, .4)' : ease, delay: (out ? rnd(0, 220) : rnd(0, 380)) / T, fill: out ? 'forwards' : 'backwards' });
+      accAnims.push(an); list.push(an.finished);
+    });
+    var pl = $('player'), pw = $('pwrap');
+    if (!pl.hidden && pl.offsetParent) {   // Player liegt rechts neben der Unterlage und rutscht unter ihr hervor. Nur er bewegt sich, das Loch in der Unterlage steht still.
+      var pr = document.querySelector('.wrap').getBoundingClientRect(), wr = pw.getBoundingClientRect(), W = wr.width, D = Math.round(wr.left + W - pr.right) + 6;
+      pw.style.clipPath = 'inset(-30px -30px -30px ' + Math.round(pr.right - wr.left) + 'px)';
+      var pa = pl.animate([{ translate: -D + 'px 0' }, { translate: '0 0' }], { duration: (out ? rnd(550, 750) : rnd(800, 1000)) / T, easing: out ? 'cubic-bezier(.5, 0, .8, .4)' : 'cubic-bezier(.2, .8, .2, 1)', delay: rnd(0, out ? 220 : 380) / T, direction: out ? 'reverse' : 'normal', fill: out ? 'forwards' : 'backwards' });
+      accAnims.push(pa); list.push(pa.finished);
+    }
+    var done = Promise.all(list);
+    if (!out) done.then(function () { dk.style.clipPath = ''; pw.style.clipPath = ''; }, function () {});
+    return done;
+  }
+  function accOut() { var dk = $('dock'); if (!accOK() || dk.hidden) return Promise.resolve(); accStop(); return accRun(true).catch(function () {}); }
+  function tryAcc() {
+    var dk = $('dock');
+    if (!accIntro || dk.hidden || !accOK()) return;
+    accIntro = false; accStop();
+    dk.classList.add('acc-wait'); $('player').classList.add('acc-wait');
+    accTimer = setTimeout(function () { dk.classList.remove('acc-wait'); $('player').classList.remove('acc-wait'); accRun(false); }, 900);
+  }
+  /* Die graue Unterlage wird sanft höher oder niedriger, statt zu springen */
+  function padH() { return parseFloat(getComputedStyle(document.querySelector('.wrap')).height) || 0; }
+  function padMorph(h0) {
+    if (!CFG.animation.an) return;
+    var w = document.querySelector('.wrap'), h1 = padH();
+    if (Math.abs(h1 - h0) < 3) return;
+    w.style.overflow = 'clip';
+    var a = w.animate([{ height: h0 + 'px' }, { height: h1 + 'px' }], { duration: 550 / CFG.animation.tempo, easing: 'cubic-bezier(.2, .8, .2, 1)' });
+    a.onfinish = a.oncancel = function () { w.style.overflow = ''; };
+  }
+  var NEU_IN = '1.1.0', NEU_KEY = 'kartenbox-neu-gesehen', neuNow = false;
+  function neuSeen() { try { return localStorage.getItem(NEU_KEY) === NEU_IN; } catch (e) { return true; } }
   function show(view) {
+    if (view !== 'study') autoStop();
+    if (current === 'opts' && view !== 'opts') neuNow = false;
     current = view;
     document.querySelectorAll('.tab').forEach(function (t) { t.setAttribute('aria-selected', String(t.dataset.view === view)); });
     document.querySelectorAll('.view').forEach(function (v) { v.classList.toggle('active', v.id === 'view-' + view); });
     moveInd(true);
-    if (view === 'study') { if (studyDirty) rebuildStudy(); else if (!$('stage').hidden) layout(); }
+    if (view === 'study') { accIntro = true; if (studyDirty) rebuildStudy(); else if (!$('stage').hidden) layout(); syncPlayer(); tryAcc(); }
     if (view === 'add') { renderAddChips(); resetAdd(); $('newQ').focus(); }
     if (view === 'all') { renderListChips(); renderList(); }
     if (view === 'cats') renderCats();
-    if (view === 'opts') renderOptions();
+    if (view === 'opts') {
+      if (!neuNow && !neuSeen()) neuNow = true;
+      if (neuNow) { try { localStorage.setItem(NEU_KEY, NEU_IN); } catch (e) {} }
+      renderOptions();
+    }
   }
   /* Lineal-Marke: gleitet unter den aktiven Tab */
   var prevTab = -1, indT = 0;
@@ -536,7 +679,7 @@
   document.querySelectorAll('[data-goto]').forEach(function (b) { b.addEventListener('click', function () { show(b.dataset.goto); }); });
 
   /* ===== Lernen: große Karte oben, Fächer immer sichtbar darunter, Stapel rechts ===== */
-  var S = { shelf: [], demo: false, mode: 'alle', round: { ok: 0, bad: 0 }, marks: {}, cat: null, list: [], queue: [], total: 0, done: 0, els: {}, sel: null, gen: 0, rank: {} };
+  var S = { shelf: [], demo: false, mode: 'alle', round: { ok: 0, bad: 0 }, marks: {}, cat: null, list: [], queue: [], total: 0, done: 0, els: {}, sel: null, gen: 0, rank: {}, rev: {}, exam: null, examNext: false, dcat: null };
   var stage = $('stage');
   var meas = $('measure');
 
@@ -554,7 +697,7 @@
     meas.style.fontSize = g.fs + 'px';
     meas.style.lineHeight = g.lh + 'px';
     var inner = g.bw - 2 * g.padx, mx = 0;
-    list.forEach(function (c) { mx = Math.max(mx, textLines(c.q, inner, g.lh), textLines(c.a, inner, g.lh)); });
+    list.forEach(function (c) { mx = Math.max(mx, textLines(qShow(c), inner, g.lh), textLines(aShow(c), inner, g.lh)); });
     linesKey = key;
     linesVal = Math.min(K.zeilenMax, Math.max(K.zeilenMin, mx));
     return linesVal;
@@ -642,7 +785,7 @@
   function fanT(s, d) { return 'translate(' + s.dx + 'px,' + (d.fanCy + s.dy - d.bigCy) + 'px) rotate(' + s.a + 'deg) scale(' + d.f + ')'; }
   function stackT(d, rot) { return 'translate(' + (d.sx - d.W / 2) + 'px,' + (d.sy - d.bigCy) + 'px) rotate(' + rot + 'deg) scale(' + d.ss + ')'; }
 
-  function face(kind, label, text) {
+  function face(kind, label, text, img) {
     var f = el('div', 'face paper ' + kind);
     f.appendChild(el('span', 'tag', label));
     if (kind === 'front') {
@@ -656,17 +799,21 @@
       g.setAttribute('aria-hidden', 'true');
       f.appendChild(g);
     }
-    f.appendChild(el('div', 'txt sharp', text));
+    var sh = el('div', 'txt sharp', text);
+    if (img) { var im = el('img', 'cimg'); im.src = img; im.alt = ''; im.draggable = false; sh.insertBefore(im, sh.firstChild); }
+    f.appendChild(sh);
     return f;
   }
   function shelfT(d, rot) { return 'translate(' + (d.hx - d.W / 2) + 'px,' + (d.sy - d.bigCy) + 'px) rotate(' + rot + 'deg) scale(' + d.ss + ')'; }
   function buildEl(c) {
     var e = el('div', 'fcard');
     e.dataset.id = c.id;
+    e.style.setProperty('--cc', catColor(c.cat));
     e._flipped = false;
     var fl = el('div', 'flip');
-    fl.appendChild(face('front', 'Frage', c.q));
-    fl.appendChild(face('back', 'Lösung', c.a));
+    var rv = !!S.rev[c.id];   // rückwärts: erst die Lösung, dann die Frage. Das Bild gehört immer zur Frage.
+    fl.appendChild(face('front', rv ? 'Lösung' : 'Frage', rv ? aShow(c) : qShow(c), rv ? '' : c.img));
+    fl.appendChild(face('back', rv ? 'Frage' : 'Lösung', rv ? qShow(c) : aShow(c), rv ? c.img : ''));
     e.appendChild(el('div', 'glow'));
     e.appendChild(fl);
     e.appendChild(el('div', 'mark'));
@@ -788,15 +935,17 @@
   var DAYS = [0, 0, 1, 3, 7, 14];
   function isDue(c) { return !c.n || (c.due || 0) <= Date.now(); }
   function isHard(c) { return c.last === 'bad'; }
+  function baseList() { return S.demo ? demoCards().filter(function (c) { return S.dcat === null || c.cat === S.dcat; }) : catList(); }
   function catList() { return db.cards.filter(function (c) { return S.cat === null || c.cat === S.cat; }); }
   function dayKey(t) {
     var d = t ? new Date(t) : new Date();
     return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
   }
-  function streak() {
+  function streak(lg) {
+    lg = lg || db.log;
     var d = new Date(), n = 0;
-    if (!db.log[dayKey(d)]) d.setDate(d.getDate() - 1);   // heute noch nicht gelernt: Serie zählt ab gestern
-    while (db.log[dayKey(d)]) { n++; d.setDate(d.getDate() - 1); }
+    if (!lg[dayKey(d)]) d.setDate(d.getDate() - 1);   // heute noch nicht gelernt: Serie zählt ab gestern
+    while (lg[dayKey(d)]) { n++; d.setDate(d.getDate() - 1); }
     return n;
   }
   function updateStats() {
@@ -811,11 +960,177 @@
     b.appendChild(i); w.appendChild(b); bar.appendChild(w);
     var t = (db.log[dayKey()] || {}).n || 0, g = CFG.lernen.tagesziel, hit = g > 0 && t >= g, st = streak();
     bar.appendChild(el('span', 'goal' + (hit ? ' hit' : ''), 'Heute ' + t + (g ? ' / ' + g : '') + (hit ? ' ✓' : '')));
-    bar.appendChild(el('span', null, 'Serie ' + st + (st === 1 ? ' Tag' : ' Tage')));
+    if (S.exam) bar.appendChild(el('span', 'goal hit', 'Prüfung'));
+    var sb = el('button', 'btn statbtn', 'Serie ' + st + (st === 1 ? ' Tag' : ' Tage') + ' · Statistik'); sb.type = 'button'; sb.addEventListener('click', function () { openStats(); });
+    bar.appendChild(sb);
   }
+  /* Statistik: nur Tage, an denen gelernt wurde. Antippen zeigt, welche Karten es waren. */
+  var DAYN = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+  function dayLabel(k) {
+    var p = k.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]), y = new Date(); y.setDate(y.getDate() - 1);
+    return (k === dayKey() ? 'Heute' : k === dayKey(y) ? 'Gestern' : DAYN[d.getDay()]) + ', ' + d.getDate() + '.' + (d.getMonth() + 1) + '.';
+  }
+  function cardOf(id) { return ST.cards.filter(function (c) { return c.id === id; })[0] || null; }
+  function dayGroups(L) {   // [{cat, color, items:[{card, ok, bad}]}]
+    var byCat = {}, order = [];
+    (L.c || []).forEach(function (e) {
+      var c = cardOf(e[0]), cat = c ? c.cat : null, g = byCat[cat];
+      if (!g) { g = byCat[cat] = { cat: cat, color: cat ? catColor(cat) : '#8b94a3', items: {}, list: [], n: 0 }; order.push(cat); }
+      var it = g.items[e[0]];
+      if (!it) { it = g.items[e[0]] = { card: c, ok: 0, bad: 0 }; g.list.push(it); }
+      if (e[1]) it.ok++; else it.bad++;
+      g.n++;
+    });
+    return order.map(function (k) { return byCat[k]; });
+  }
+  /* Demo-Statistik: Beispieldaten, nichts davon landet in deinen Daten. Nach 2 Minuten schließt sie sich von selbst, gelernt wird unabhängig davon normal gezählt. */
+  var ST = { log: {}, cards: [] }, STD = { iv: 0, end: 0 }, DEMOST = null;
+  function demoStat() {
+    if (DEMOST) return DEMOST;
+    var seed = 7, rnd = function () { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }, base = demoCards(), log = {}, i, k;
+    for (i = 0; i < 32; i++) {
+      if (i % 4 === 3 || i === 5) continue;
+      var d = new Date(); d.setDate(d.getDate() - i);
+      var n = 6 + Math.floor(rnd() * 11), c = [];
+      for (k = 0; k < n; k++) c.push([base[Math.floor(rnd() * base.length)].id, rnd() < 0.42 + 0.017 * (32 - i) ? 1 : 0]);
+      log[dayKey(d)] = { n: n, ok: c.reduce(function (a, e) { return a + e[1]; }, 0), c: c };
+    }
+    DEMOST = { log: log, cards: base.map(function (c, n) { return { id: c.id, q: c.q, a: c.a, cat: c.cat, n: 1, box: 1 + (n * 3) % 5, miss: n % 4 === 0 ? 2 + n % 2 : 0 }; }) };
+    return DEMOST;
+  }
+  function statDemoStop() { clearInterval(STD.iv); STD.iv = 0; }
+  function openStats(demo) {
+    demo = demo === true;
+    statDemoStop();
+    ST = demo ? demoStat() : { log: db.log, cards: db.cards };
+    var b = $('statBody'); b.textContent = '';
+    if (demo) {
+      var bn = el('p', 'stdemo'), cnt = el('b', null, '2:00'), eb = el('button', 'btn', 'Beenden'); eb.type = 'button';
+      bn.appendChild(document.createTextNode('Demo mit Beispieldaten. Schließt in ')); bn.appendChild(cnt); bn.appendChild(document.createTextNode(' ')); bn.appendChild(eb);
+      eb.addEventListener('click', function () { $('statDlg').close(); });
+      b.appendChild(bn);
+      STD.end = Date.now() + 120000;
+      var tick = function () {
+        var l = Math.max(0, Math.round((STD.end - Date.now()) / 1000));
+        cnt.textContent = Math.floor(l / 60) + ':' + ('0' + l % 60).slice(-2);
+        if (l <= 0) { statDemoStop(); $('statDlg').close(); toast('Demo-Statistik beendet'); }
+      };
+      STD.iv = setInterval(tick, 500);
+    }
+    var goal = CFG.lernen.tagesziel, keys = Object.keys(ST.log).sort(), i;
+    var all = keys.map(function (k) { return ST.log[k]; });
+    var total = all.reduce(function (a, l) { return a + l.n; }, 0), okAll = all.reduce(function (a, l) { return a + l.ok; }, 0), best = all.reduce(function (a, l) { return Math.max(a, l.n); }, 0);
+    var sum = el('dl', 'stsum');
+    [['Serie', streak(ST.log) + (streak(ST.log) === 1 ? ' Tag' : ' Tage'), 1], ['Gelernt gesamt', String(total), 4], ['Davon gewusst', total ? Math.round(okAll / total * 100) + ' %' : '–', 2], ['Bester Tag', String(best), 5]].forEach(function (p) {
+      var w = el('div'); w.style.borderTopColor = PALETTE[p[2]]; w.appendChild(el('dt', null, p[0])); w.appendChild(el('dd', null, p[1])); sum.appendChild(w);
+    });
+    b.appendChild(sum);
+    if (!keys.length) {
+      b.appendChild(el('p', 'hint', 'Noch nichts gelernt. Sobald du Karten mit Gewusst oder Nochmal bewertest, erscheint hier jeder Lerntag.'));
+      var db2 = el('button', 'btn primary', 'Demo ansehen'); db2.type = 'button'; db2.addEventListener('click', function () { openStats(true); }); b.appendChild(db2);
+    } else {
+      var shown = keys.slice(-21), mx = Math.max.apply(null, shown.map(function (k) { return ST.log[k].n; })), sel = shown[shown.length - 1];
+      var detail = el('div', 'stdetail'), btns = {}, dots = {}, usedCats = {};
+      b.appendChild(el('h3', null, 'Lerntage (antippen)'));
+      var row = el('div', 'stdays');
+      shown.forEach(function (k) {
+        var L = ST.log[k], bt = el('button', 'stday'), tr = el('span', 'sttrack'), col = el('span', 'stcol'), p = k.split('-');
+        bt.type = 'button'; bt.title = dayLabel(k) + ': ' + L.n + ' Karten';
+        col.style.height = Math.max(6, L.n / mx * 100) + '%';
+        var gs = dayGroups(L);
+        if (gs.length) gs.forEach(function (g) { var sg = el('i'); sg.style.flex = String(g.n); sg.style.background = g.color; col.appendChild(sg); if (g.cat) usedCats[g.cat] = g.color; });
+        else { var sg = el('i'); sg.style.flex = '1'; sg.style.background = '#8b94a3'; col.appendChild(sg); }
+        tr.appendChild(col); bt.appendChild(tr);
+        bt.appendChild(el('b', null, String(L.n)));
+        bt.appendChild(el('small', null, (+p[2]) + '.' + (+p[1]) + '.'));
+        if (goal && L.n >= goal) bt.appendChild(el('em', null, '✓'));
+        bt.addEventListener('click', function () { pick(k); });
+        btns[k] = bt; row.appendChild(bt);
+      });
+      b.appendChild(row);
+      var cats = Object.keys(usedCats);
+      if (cats.length) {
+        var lg = el('p', 'stleg');
+        cats.forEach(function (c) { var sp = el('span', null, c); sp.style.setProperty('--c', usedCats[c]); lg.appendChild(sp); });
+        b.appendChild(lg);
+      }
+      b.appendChild(el('h3', null, 'Lernkurve (Gewusst pro Lerntag)'));
+      var ns = 'http://www.w3.org/2000/svg', cv = document.createElementNS(ns, 'svg');
+      cv.setAttribute('viewBox', '0 0 280 110'); cv.setAttribute('class', 'stchart stcurve'); cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', 'Anteil gewusster Karten pro Lerntag');
+      [0, 50, 100].forEach(function (pc) {
+        var y = 90 - pc * 0.8, ln = document.createElementNS(ns, 'line'), tx = document.createElementNS(ns, 'text');
+        ln.setAttribute('x1', 26); ln.setAttribute('x2', 278); ln.setAttribute('y1', y); ln.setAttribute('y2', y); ln.setAttribute('class', 'grid');
+        tx.setAttribute('x', 0); tx.setAttribute('y', y + 3); tx.textContent = pc + '%';
+        cv.appendChild(ln); cv.appendChild(tx);
+      });
+      var X = function (k) { return shown.length > 1 ? 32 + k * (240 / (shown.length - 1)) : 150; }, Y = function (q) { return 90 - q * 80; };
+      var qs = shown.map(function (k) { var L = ST.log[k]; return L.ok / L.n; });
+      if (shown.length > 1) {
+        var pl = document.createElementNS(ns, 'polyline');
+        pl.setAttribute('points', qs.map(function (q, k) { return X(k).toFixed(1) + ',' + Y(q).toFixed(1); }).join(' ')); pl.setAttribute('class', 'curve');
+        cv.appendChild(pl);
+      }
+      shown.forEach(function (k, n) {
+        var c = document.createElementNS(ns, 'circle'); c.setAttribute('cx', X(n)); c.setAttribute('cy', Y(qs[n])); c.setAttribute('r', 4.5); c.setAttribute('class', 'dotc');
+        c.setAttribute('tabindex', '0'); c.setAttribute('role', 'button'); c.setAttribute('aria-label', dayLabel(k) + ': ' + Math.round(qs[n] * 100) + ' Prozent gewusst');
+        var t = document.createElementNS(ns, 'title'); t.textContent = dayLabel(k) + ': ' + Math.round(qs[n] * 100) + ' % von ' + ST.log[k].n; c.appendChild(t);
+        c.addEventListener('click', function () { pick(k); });
+        c.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(k); } });
+        dots[k] = c; cv.appendChild(c);
+      });
+      b.appendChild(cv);
+      b.appendChild(detail);
+      var pick = function (k) {
+        sel = k;
+        shown.forEach(function (x) { btns[x].setAttribute('aria-pressed', String(x === k)); dots[x].classList.toggle('sel', x === k); });
+        detail.textContent = '';
+        var L = ST.log[k], pc = L.n ? Math.round(L.ok / L.n * 100) : 0, hd = el('h3', null, dayLabel(k));
+        detail.appendChild(hd);
+        detail.appendChild(el('p', 'stline', L.n + (L.n === 1 ? ' Karte' : ' Karten') + ' · ' + L.ok + ' gewusst (' + pc + ' %)' + (goal && L.n >= goal ? ' · Tagesziel erreicht' : '')));
+        var gs = dayGroups(L);
+        if (!gs.length) { detail.appendChild(el('p', 'hint', 'Für diesen Tag sind nur die Zahlen gespeichert, nicht die einzelnen Karten.')); return; }
+        gs.forEach(function (g) {
+          var sec = el('section', 'stgrp'), h = el('h4', null, g.cat || 'Gelöschte Karten'), ul = el('ul');
+          sec.style.setProperty('--c', g.color); sec.appendChild(h);
+          g.list.forEach(function (it) {
+            var li = el('li'), q = it.card ? (qShow(it.card) || '') : 'Karte wurde gelöscht';
+            li.appendChild(el('span', 'q', q.length > 90 ? q.slice(0, 90) + '…' : q));
+            var m = el('b', it.bad ? 'bad' : 'ok', (it.bad ? '✗' : '✓') + (it.ok + it.bad > 1 ? ' ×' + (it.ok + it.bad) : ''));
+            m.title = it.bad ? 'Nochmal' : 'Gewusst'; li.appendChild(m); ul.appendChild(li);
+          });
+          sec.appendChild(ul); detail.appendChild(sec);
+        });
+      };
+      pick(sel);
+    }
+    var cards = ST.cards, bw = el('div', 'stbox'), boxes = [], BCOL = ['#e5484d', '#f08a24', '#e0b020', '#6fb35a', '#3fa66b'];
+    for (i = 1; i <= 5; i++) boxes.push(cards.filter(function (c) { return c.n && c.box === i; }).length);
+    var bmax = Math.max(1, Math.max.apply(null, boxes));
+    if (boxes.some(Boolean)) {
+      b.appendChild(el('h3', null, 'Karteikasten'));
+      boxes.forEach(function (n, k) {
+        if (!n) return;
+        var r = el('div', 'br'); r.appendChild(el('span', null, 'Kasten ' + (k + 1)));
+        var bar = el('div', 'bb'), f = el('i'); f.style.width = (n / bmax * 100) + '%'; f.style.background = BCOL[k]; bar.appendChild(f); r.appendChild(bar); r.appendChild(el('b', null, String(n))); bw.appendChild(r);
+      });
+      b.appendChild(bw);
+    }
+    var hard = cards.filter(function (c) { return c.miss >= 2; }).sort(function (x, y) { return y.miss - x.miss; }).slice(0, 5);
+    if (hard.length) {
+      b.appendChild(el('h3', null, 'Schwerste Karten'));
+      var ul = el('ul', 'sthard');
+      hard.forEach(function (c) { var li = el('li'); li.appendChild(el('b', null, '×' + c.miss)); li.appendChild(el('span', null, c.q.length > 70 ? c.q.slice(0, 70) + '…' : c.q)); ul.appendChild(li); });
+      b.appendChild(ul);
+    }
+    $('statDlg').showModal();
+    $('statDlg').scrollTop = 0;
+    var dr = b.querySelector('.stdays'); if (dr) dr.scrollLeft = dr.scrollWidth;
+  }
+  $('statClose').addEventListener('click', function () { $('statDlg').close(); });
+  $('statDlg').addEventListener('close', statDemoStop);
   function isPinned(c) { return !!c.pin; }
   function renderModes() {
-    var base = S.demo ? demoCards() : catList();
+    var base = baseList();
     chips($('modeChips'), [
       { v: 'alle', label: 'Alle Karten', n: base.length },
       { v: 'faellig', label: 'Fällig', n: base.filter(isDue).length },
@@ -824,19 +1139,33 @@
     ], S.mode, function (v) { S.mode = v; rebuildStudy(); });
   }
   function rebuildStudy() {
+    if (!AUTO.keep) autoStop();
     studyDirty = false;
     S.gen++;
     clearEls();
     // Demo ist ein eigener Stapel: er liegt nicht in deinen Karten und stört deine Rubriken nicht
-    chips($('studyChips'), catOpts(true), S.demo ? '__demo' : S.cat, function (v) { S.demo = false; S.cat = v; rebuildStudy(); });
+    if (S.demo) {   // Demo bringt ihre eigenen Rubriken mit, nach dem Ausschalten sind sie wieder weg
+      var dc = {}; demoCards().forEach(function (c) { dc[c.cat] = (dc[c.cat] || 0) + 1; });
+      chips($('studyChips'), [{ v: null, label: 'Alle', n: demoCards().length }].concat(DEMO.cats.map(function (n) { return { v: n, label: n, n: dc[n] || 0, color: catColor(n) }; })), S.dcat, function (v) { S.dcat = v; rebuildStudy(); });
+    } else chips($('studyChips'), catOpts(true), S.cat, function (v) { S.cat = v; rebuildStudy(); });
     $('demoSw').setAttribute('aria-checked', String(S.demo));
-    var base = S.demo ? demoCards() : catList();
+    var base = baseList();
     renderModes();
     var mode = S.mode;
     S.list = mode === 'faellig' ? base.filter(isDue) : mode === 'schwer' ? base.filter(isHard) : mode === 'pin' ? base.filter(isPinned) : base;
     S.queue = S.list.map(function (c) { return c.id; });
     if (mode === 'faellig') S.queue.sort(function (x, y) { return (byId(x).box || 1) - (byId(y).box || 1); });
     if (CFG.lernen.mischen) shuffleArr(S.queue);
+    if (S.examNext && !S.demo) {   // Prüfung: zufällige Karten, ohne Wiederholung, am Ende gibt es eine Note
+      shuffleArr(S.queue); S.queue = S.queue.slice(0, CFG.lernen.pruefung);
+      var inQ = {}; S.queue.forEach(function (id) { inQ[id] = 1; });
+      S.list = S.list.filter(function (c) { return inQ[c.id]; });
+      S.exam = { ok: 0, bad: 0, t0: Date.now() };
+    } else S.exam = null;
+    S.examNext = false;
+    var dr = CFG.lernen.richtung;
+    S.rev = {};
+    S.list.forEach(function (c) { S.rev[c.id] = !hasCloze(c.q) && (dr === 'rueck' || (dr === 'misch' && Math.random() < 0.5)); });
     S.total = S.list.length; S.done = 0; S.sel = null; S.round = { ok: 0, bad: 0 }; S.marks = {}; S.shelf = [];
     S.rank = {}; S.queue.forEach(function (id, i) { S.rank[id] = i; });
     var has = S.list.length > 0;
@@ -848,7 +1177,10 @@
     $('studyEmpty').querySelectorAll('[data-goto], #demoBtn2').forEach(function (b) { b.hidden = filtered; });
     updateStats();
     stage.hidden = !has;
+    typeState();
+    if (has && $('dock').hidden) accIntro = true;   // Karten erscheinen (Demo oder erste Karte): Zubehör rutscht ein
     $('dock').hidden = !has;
+    syncPlayer();
     $('steps').hidden = !has;
     $('keysHint').hidden = !has || !CFG.lernen.tastatur;
     $('studyControls').hidden = !has;
@@ -918,6 +1250,7 @@
     });
     $('slot').classList.toggle('off', !!S.sel || !S.queue.length);
     $('lcdN').textContent = S.done + '/' + S.total;   // Anzeige des Taschenrechners
+    typeState();
   }
   /* Countdown: läuft, solange die Frage gezeigt wird; bei 0 dreht sich die Karte zur Lösung */
   var TM = { id: null, end: 0, iv: 0 };
@@ -934,7 +1267,7 @@
     e.querySelector('.tnum').textContent = Math.ceil(left / 1000) + ' s';
     e.querySelector('.tbar i').style.width = (left / total * 100) + '%';
     e.querySelector('.timer').classList.toggle('low', left <= 5000);
-    if (left <= 0) { stopTimer(); setFlip(e, true); updateUI(); }
+    if (left <= 0) { stopTimer(); setFlip(e, true); updateUI(); speakCard(true); }
   }
   function startTimer(id) {
     stopTimer();
@@ -948,15 +1281,69 @@
   function select(id) {
     var ae = document.activeElement;   // Fokus von Schaltern wie Demo löst, sonst schaltet die Leertaste statt die Karte zu drehen
     if (ae && ae !== document.body && ae.tagName === 'BUTTON' && !stage.contains(ae)) ae.blur();
-    S.sel = id; layout(); startTimer(id); updateUI();
+    S.sel = id; layout(); startTimer(id);
+    $('typeIn').value = ''; $('typeRes').textContent = ''; $('typeRes').className = '';
+    updateUI();
+    if (CFG.lernen.tippen && !(window.matchMedia && matchMedia('(pointer: coarse)').matches)) $('typeIn').focus();
+    speakCard(false);
   }
-  function deselect() { if (!S.sel) return; stopTimer(); S.sel = null; layout(); updateUI(); }
+  /* Tippen: Antwort eintragen, die Karte dreht sich und zeigt, ob es gestimmt hat */
+  function typeState() {
+    var row = $('typeRow'), on = CFG.lernen.tippen && !stage.hidden && S.list.length > 0;
+    row.hidden = !on;
+    if (!on) return;
+    var e = S.sel && S.els[S.sel], can = !!(e && !e._flipped);
+    $('typeIn').disabled = !can; $('typeBtn').disabled = !can;
+  }
+  function typeCheck() {
+    var e = S.sel && S.els[S.sel];
+    if (!e || e._flipped) return;
+    var c = byId(S.sel), want = hasCloze(c.q) ? clozeWords(c.q).join(' ') : (S.rev[c.id] ? c.q : c.a);
+    var g = grade($('typeIn').value, want), r = $('typeRes');
+    r.textContent = g === 2 ? 'Richtig' : g === 1 ? 'Fast richtig' : 'Nicht ganz';
+    r.className = 'g' + g;
+    stopTimer(); flip();
+  }
+  $('typeBtn').addEventListener('click', typeCheck);
+  $('typeIn').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); typeCheck(); } });
+  /* Vorlesen mit der Stimme des Geräts (offline). Vorderseite beim Wählen, Rückseite beim Drehen. */
+  function speakCard(back) {
+    var m = CFG.lernen.vorlesen;
+    if (m === 'aus' || !window.speechSynthesis || !S.sel) return;
+    if (back ? m === 'frage' : m === 'loesung') return;
+    var c = byId(S.sel); if (!c) return;
+    var rv = !!S.rev[c.id], front = rv ? aShow(c) : qShow(c), txt = back ? (rv ? qShow(c) : aShow(c)) : front;
+    try {
+      speechSynthesis.cancel();
+      say(txt.replace(/\[ … \]/g, 'Lücke'), true);
+    } catch (err) {}
+  }
+  var LANGN = { 'de-DE': 'Deutsch', 'en-GB': 'Englisch', 'fr-FR': 'Französisch', 'es-ES': 'Spanisch', 'it-IT': 'Italienisch' };
+  var LANGT = { 'de-DE': 'Hallo, das ist ein Test.', 'en-GB': 'Hello, this is a test.', 'fr-FR': 'Bonjour, ceci est un test.', 'es-ES': 'Hola, esto es una prueba.', 'it-IT': 'Ciao, questo è un test.' };
+  function voiceFor(lang) {
+    var v = []; try { v = speechSynthesis.getVoices() || []; } catch (e) {}
+    var l = lang.toLowerCase(), pre = l.slice(0, 2);
+    function norm(x) { return String(x.lang).replace('_', '-').toLowerCase(); }
+    return v.filter(function (x) { return norm(x) === l; })[0] || v.filter(function (x) { return norm(x).indexOf(pre) === 0; })[0] || null;
+  }
+  var warnedVoice = false;
+  function say(text, quiet) {
+    var lang = CFG.lernen.sprache, u = new SpeechSynthesisUtterance(text), v = voiceFor(lang), n = 0;
+    try { n = (speechSynthesis.getVoices() || []).length; } catch (e) {}
+    u.lang = lang;
+    if (v) u.voice = v;
+    else if (n && !warnedVoice) { warnedVoice = true; toast('Keine ' + LANGN[lang] + 'e Stimme auf diesem Gerät. Siehe Optionen.'); }
+    speechSynthesis.speak(u);
+  }
+  if (window.speechSynthesis && speechSynthesis.addEventListener) speechSynthesis.addEventListener('voiceschanged', function () { if (current === 'opts') renderOptions(); });
+  function deselect() { if (!S.sel) return; try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} stopTimer(); S.sel = null; layout(); updateUI(); }
   function flip() {
     if (!S.sel || TM.id === S.sel) return; // solange der Countdown läuft, dreht nur er die Karte
     var e = S.els[S.sel];
     setFlip(e, !e._flipped);
     if (e._flipped) stopTimer();
     updateUI();
+    if (e._flipped) speakCard(true);
   }
   function next() {
     if (!S.sel) return;
@@ -980,13 +1367,60 @@
       renderPile();
       if (!S.queue.length && S.shelf.length) { recall(); return; }
       if (!S.queue.length) {
-        $('endMsg').textContent = 'Alle Karten geschafft.' + (S.round.ok + S.round.bad ? ' Gewusst: ' + S.round.ok + ', Nochmal: ' + S.round.bad + '.' : '');
+        $('endMsg').textContent = S.exam ? examText() : 'Alle Karten geschafft.' + (S.round.ok + S.round.bad ? ' Gewusst: ' + S.round.ok + ', Nochmal: ' + S.round.bad + '.' : '');
+        $('examBtn').hidden = S.demo;
         $('endBox').hidden = false;
       }
       updateUI();
     }, ms);
   }
   /* Weiter ohne Lösung und Nochmal: Die Karte fliegt in die Ablage (links oben), nicht auf den Gewusst-Stapel. Ist die Runde leer, kommt die Ablage von selbst zurück. */
+  /* Auto-Modus: Frage zeigen, drehen, weiter. Zählt nicht als Lernen, die Fächer bleiben unverändert. */
+  var AUTO = { on: false, rand: false, t: 0, keep: false, iv: 0, end: 0, ph: '' };
+  function playerOn() { return CFG.lernen.player && window.innerWidth >= 900; }
+  function syncPlayer() { var on = playerOn() && !stage.hidden && !S.exam; $('player').hidden = !on; if (!on) autoStop(); }
+  function autoUI() {
+    $('autoBtn').setAttribute('aria-pressed', String(AUTO.on));
+    $('autoTxt').textContent = AUTO.on ? 'Stopp' : 'Auto';
+    $('player').classList.toggle('on', AUTO.on);
+    $('autoMode').textContent = AUTO.rand ? 'Zufall' : 'Reihe';
+  }
+  function autoStop() {
+    clearTimeout(AUTO.t); clearInterval(AUTO.iv); AUTO.iv = 0;
+    $('autoLcd').textContent = '––';
+    if (!AUTO.on) return;
+    AUTO.on = false; autoUI();
+  }
+  /* Anzeige im Player: Seite und Sekunden, die noch laufen */
+  function autoLcd() { var l = Math.max(0, Math.ceil((AUTO.end - Date.now()) / 1000)); $('autoLcd').textContent = AUTO.ph ? AUTO.ph + ' ' + l : '––'; }
+  function autoPhase(ph, ms) { AUTO.ph = ph; AUTO.end = Date.now() + ms; autoLcd(); if (!AUTO.iv) AUTO.iv = setInterval(autoLcd, 200); }
+  function autoStep() {
+    if (!AUTO.on || current !== 'study') return;
+    if (!S.queue.length) {   // Durchlauf fertig: neu mischen und weiter, bis jemand stoppt
+      AUTO.keep = true; rebuildStudy(); AUTO.keep = false;
+      if (!S.queue.length) { autoStop(); return; }
+    }
+    var id = AUTO.rand ? S.queue[Math.floor(Math.random() * S.queue.length)] : S.queue[0], ms = CFG.lernen.auto * 1000;
+    select(id); stopTimer(); autoPhase('Frage', ms);
+    AUTO.t = setTimeout(function () {
+      if (!AUTO.on) return;
+      flip(); autoPhase('Lösung', ms);
+      AUTO.t = setTimeout(function () {
+        if (!AUTO.on) return;
+        next(); AUTO.ph = ''; autoLcd();
+        AUTO.t = setTimeout(autoStep, Math.round(1100 / CFG.animation.tempo));
+      }, ms);
+    }, ms);
+  }
+  $('autoBtn').addEventListener('click', function () {
+    if (AUTO.on) { autoStop(); return; }
+    if (!S.queue.length) return;
+    AUTO.on = true; autoUI(); deselect(); autoStep();
+  });
+  $('autoMode').addEventListener('click', function () { AUTO.rand = !AUTO.rand; autoUI(); });
+  $('view-study').addEventListener('pointerdown', function (e) { if (AUTO.on && !e.target.closest('#player')) autoStop(); }, true);
+  document.addEventListener('keydown', function (e) { if (AUTO.on && !e.target.closest('#player')) autoStop(); }, true);
+  autoUI();
   function putBack(kind) {
     if (!S.sel) return;
     stopTimer();
@@ -1012,23 +1446,38 @@
       updateUI();
     }, ms);
   }
+  function examText() {
+    var x = S.exam, n = x.ok + x.bad, p = n ? x.ok / n * 100 : 0, note = p >= 92 ? 1 : p >= 81 ? 2 : p >= 67 ? 3 : p >= 50 ? 4 : p >= 30 ? 5 : 6;
+    var sec = Math.round((Date.now() - x.t0) / 1000);
+    return 'Prüfung: ' + x.ok + ' von ' + n + ' richtig. Note ' + note + '. Zeit ' + Math.floor(sec / 60) + ':' + ('0' + sec % 60).slice(-2) + '.';
+  }
+  function startExam() {
+    if (S.demo) { toast('Prüfung geht mit deinen eigenen Karten'); return; }
+    if (catList().length < 3) { toast('Für eine Prüfung brauchst du mindestens 3 Karten'); return; }
+    S.examNext = true; S.mode = 'alle';
+    show('study');
+    rebuildStudy();
+  }
   function rate(ok) {
     if (!S.sel || TM.id === S.sel) return;
     var id = S.sel, c = byId(id);
     if (c) {
       c.n = (c.n || 0) + 1;
       c.last = ok ? 'ok' : 'bad';
+      c.miss = ok ? 0 : Math.min(99, (c.miss || 0) + 1);
       c.box = ok ? Math.min(5, (c.box || 1) + 1) : 1;
       c.due = ok ? Date.now() + DAYS[c.box] * 864e5 : 0;
     }
     if (c && !S.demo) {
       var k = dayKey(), L = db.log[k] || (db.log[k] = { n: 0, ok: 0 });
       L.n++; if (ok) L.ok++;
+      (L.c || (L.c = [])).push([id, ok ? 1 : 0]); if (L.c.length > 400) L.c.shift();
       persist(); scheduleWrite();
       if (CFG.lernen.tagesziel && L.n === CFG.lernen.tagesziel) toast('Tagesziel erreicht');
     }
     S.round[ok ? 'ok' : 'bad']++;
-    if (ok) { delete S.marks[id]; next(); } else putBack('bad');
+    if (S.exam) S.exam[ok ? 'ok' : 'bad']++;
+    if (ok || S.exam) { delete S.marks[id]; next(); } else putBack('bad');
     updateStats(); renderModes();
   }
   function shuffle() {
@@ -1042,7 +1491,7 @@
   }
 
   stage.addEventListener('click', function (e) {
-    if (e.target.closest('#endBox')) return;
+    if (e.target.closest('#endBox, #player')) return;
     var f = e.target.closest('.fcard');
     if (!f) { deselect(); return; }
     var id = f.dataset.id;
@@ -1063,6 +1512,7 @@
   $('shuffleBtn').addEventListener('click', shuffle);
   $('shelf').addEventListener('click', recall);
   $('newRound').addEventListener('click', rebuildStudy);
+  $('examBtn').addEventListener('click', startExam);
   var resizeT = 0;
   window.addEventListener('resize', function () {   // gebündelt: höchstens ein Neuaufbau pro Frame
     cancelAnimationFrame(resizeT);
@@ -1093,12 +1543,54 @@
     if (db.cats.indexOf(addCat) < 0) addCat = (S.cat && db.cats.indexOf(S.cat) >= 0) ? S.cat : db.cats[0];
     chips($('addChips'), catOpts(false), addCat, function (v) { addCat = v; renderAddChips(); }, {
       label: '+ Neue Rubrik',
-      fn: function () { askName('Neue Rubrik', '', function (n) { var e = createCat(n); if (!e) { addCat = n; renderAddChips(); } return e; }); }
+      fn: function () { askName('Neue Rubrik', '', function (n, col) { var e = createCat(n, col); if (!e) { addCat = n; renderAddChips(); } return e; }); }
     });
+  }
+  /* Bild zur Frage: wird auf höchstens 640 px verkleinert und als JPEG in der Karte gespeichert (nichts wird hochgeladen) */
+  function imgFromFile(file, cb) {
+    if (!file || !/^image\//.test(file.type)) { toast('Das ist kein Bild'); return; }
+    var url = URL.createObjectURL(file), im = new Image();
+    im.onload = function () {
+      var k = Math.min(1, 640 / Math.max(im.width, im.height)), cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(im.width * k)); cv.height = Math.max(1, Math.round(im.height * k));
+      var cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(im, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(url);
+      var d = cv.toDataURL('image/jpeg', 0.78);
+      if (okImg(d)) cb(d); else toast('Das Bild ist zu groß');
+    };
+    im.onerror = function () { URL.revokeObjectURL(url); toast('Das Bild konnte nicht gelesen werden'); };
+    im.src = url;
+  }
+  var picks = {};
+  function imgPicker(pre, ta) {   // pre: 'new' oder 'edit', ta: Textfeld, in das man ein Bild einfügen kann
+    var p = picks[pre] = { img: '' };
+    function show() {
+      $(pre + 'ImgPrev').hidden = !p.img; $(pre + 'ImgDel').hidden = !p.img;
+      if (p.img) $(pre + 'ImgPrev').src = p.img;
+      $(pre + 'ImgBtn').textContent = p.img ? 'Bild ändern' : 'Bild zur Frage';
+    }
+    p.show = show;
+    $(pre + 'ImgBtn').addEventListener('click', function () { $(pre + 'ImgFile').click(); });
+    $(pre + 'ImgFile').addEventListener('change', function (e) {
+      imgFromFile(e.target.files[0], function (d) { p.img = d; show(); });
+      e.target.value = '';
+    });
+    $(pre + 'ImgDel').addEventListener('click', function () { p.img = ''; show(); });
+    $(ta).addEventListener('paste', function (e) {
+      var f = Array.prototype.filter.call((e.clipboardData && e.clipboardData.files) || [], function (x) { return /^image\//.test(x.type); })[0];
+      if (f) { e.preventDefault(); imgFromFile(f, function (d) { p.img = d; show(); }); }
+    });
+  }
+  imgPicker('new', 'newQ'); imgPicker('edit', 'editQ');
+  function dupOf(q, exceptId) {
+    var k = flat(hasCloze(q) ? q.replace(/\{\{(.+?)\}\}/g, '$1') : q);
+    return db.cards.filter(function (c) { return c.id !== exceptId && flat(hasCloze(c.q) ? c.q.replace(/\{\{(.+?)\}\}/g, '$1') : c.q) === k; })[0] || null;
   }
   function resetAdd() {
     $('newQ').value = '';
     $('newA').value = '';
+    $('newTags').value = '';
+    picks.new.img = ''; picks.new.show();
     $('step1').hidden = false;
     $('step2').hidden = true;
     $('p1').classList.add('on');
@@ -1106,6 +1598,7 @@
   }
   $('toStep2').addEventListener('click', function () {
     if (!$('newQ').value.trim()) { toast('Bitte zuerst eine Frage eingeben'); $('newQ').focus(); return; }
+    $('newA').placeholder = hasCloze($('newQ').value) ? 'Zusatz zur Lösung (kein Muss)' : 'Die Lösung';
     $('step1').hidden = true;
     $('step2').hidden = false;
     $('p2').classList.add('on');
@@ -1119,33 +1612,57 @@
   });
   $('saveCard').addEventListener('click', function () {
     var q = $('newQ').value.trim(), a = $('newA').value.trim();
-    if (!a) { toast('Bitte eine Lösung eingeben'); $('newA').focus(); return; }
-    db.cards.push({ id: uid(), q: q, a: a, cat: addCat });
-    save();
-    renderAddChips();
-    toast('Gespeichert in „' + addCat + '“');
-    resetAdd();
-    $('newQ').focus();
+    if (!a && !hasCloze(q)) { toast('Bitte eine Lösung eingeben'); $('newA').focus(); return; }
+    function doSave() {
+      var c = { id: uid(), q: q, a: a || clozeWords(q).join(', '), cat: addCat }, tg = parseTags($('newTags').value);
+      if (tg.length) c.tags = tg;
+      if (picks.new.img) c.img = picks.new.img;
+      db.cards.push(c);
+      save();
+      renderAddChips();
+      toast('Gespeichert in „' + addCat + '“');
+      resetAdd();
+      $('newQ').focus();
+    }
+    var d = dupOf(q);
+    if (d) confirmDlg('Gibt es schon', 'Diese Frage steht schon in „' + d.cat + '“. Trotzdem speichern?', doSave, 'Speichern', false);
+    else doSave();
   });
   $('newQ').addEventListener('keydown', function (e) { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) $('toStep2').click(); });
   $('newA').addEventListener('keydown', function (e) { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) $('saveCard').click(); });
 
   /* ===== Alle Karten ===== */
   var listCat = null;
+  $('listSearch').addEventListener('input', function () { renderList(); });
   function renderListChips() {
     chips($('listChips'), catOpts(true), listCat, function (v) { listCat = v; renderListChips(); renderList(); });
   }
   function renderList() {
     var list = $('list');
     list.textContent = '';
-    var items = db.cards.filter(function (c) { return listCat === null || c.cat === listCat; });
-    if (!items.length) { list.appendChild(el('div', 'empty', 'Keine Karten.')); return; }
+    var term = flat($('listSearch').value);
+    var items = db.cards.filter(function (c) {
+      return (listCat === null || c.cat === listCat) && (!term || flat([c.q, c.a, c.cat].concat(c.tags || []).join(' ')).indexOf(term) >= 0);
+    });
+    if (!items.length) { list.appendChild(el('div', 'empty', term ? 'Nichts gefunden.' : 'Keine Karten.')); return; }
     items.forEach(function (c) {
       var item = el('div', 'item');
       var box = el('div', 'txtbox');
-      box.appendChild(el('p', 'cat', c.cat));
+      var cp = el('p', 'cat', c.cat), cd = el('i', 'dot'); cd.style.background = catColor(c.cat); cp.insertBefore(cd, cp.firstChild);
+      box.appendChild(cp);
       box.appendChild(el('p', 'q', c.q));
       box.appendChild(el('p', 'a', c.a));
+      if (c.img) { var th = el('img', 'thumb'); th.src = c.img; th.alt = 'Bild zur Frage'; box.appendChild(th); }
+      if (c.tags && c.tags.length) {
+        var tl = el('p', 'tags');
+        c.tags.forEach(function (t) {
+          var tb = el('button', 'tagpill', '#' + t); tb.type = 'button';
+          tb.addEventListener('click', function () { $('listSearch').value = t; renderList(); });
+          tl.appendChild(tb);
+        });
+        box.appendChild(tl);
+      }
+      if (c.miss >= 3) box.appendChild(el('p', 'warn', 'Nochmal ×' + c.miss + ' in Folge. Karte überarbeiten?'));
       var acts = el('div', 'acts');
       var eb = el('button', 'btn', 'Ändern'); eb.type = 'button';
       eb.addEventListener('click', function () { openEdit(c.id); });
@@ -1173,14 +1690,22 @@
     renderEditChips();
     $('editQ').value = c.q;
     $('editA').value = c.a;
+    $('editTags').value = (c.tags || []).join(', ');
+    picks.edit.img = c.img || ''; picks.edit.show();
     $('editDlg').showModal();
   }
   $('editCancel').addEventListener('click', function () { $('editDlg').close(); });
   $('editSave').addEventListener('click', function () {
     var q = $('editQ').value.trim(), a = $('editA').value.trim();
-    if (!q || !a) { toast('Frage und Lösung dürfen nicht leer sein'); return; }
+    if (!q || (!a && !hasCloze(q))) { toast('Frage und Lösung dürfen nicht leer sein'); return; }
     var c = byId(editId);
-    if (c) { c.q = q; c.a = a; c.cat = editCat; save(); renderListChips(); renderList(); }
+    if (c) {
+      c.q = q; c.a = a || clozeWords(q).join(', '); c.cat = editCat;
+      var tg = parseTags($('editTags').value);
+      if (tg.length) c.tags = tg; else delete c.tags;
+      if (picks.edit.img) c.img = picks.edit.img; else delete c.img;
+      save(); renderListChips(); renderList();
+    }
     $('editDlg').close();
     toast('Karte geändert');
   });
@@ -1212,13 +1737,16 @@
   }
   function setDemo(on) {
     S.demo = on;
-    S.mode = 'alle';
+    S.mode = 'alle'; S.dcat = null;
     DEMOCARDS = null;   // Demo startet jedes Mal frisch ohne Pins und Marker
     $('demoSw').setAttribute('aria-checked', String(on));
     toast(on ? 'Demo an' : 'Demo aus');
     var tok = ++leaveTok;
-    var go = function () { if (tok !== leaveTok) return; studyDirty = true; show('study'); };
-    if (current === 'study' && !stage.hidden) leaveAll(go); else go();
+    var go = function () { if (tok !== leaveTok) return; var h0 = padH(); studyDirty = true; show('study'); padMorph(h0); };
+    if (current === 'study' && !stage.hidden) {   // Karten fliegen weg, das Zubehör rutscht unter die Unterlage, dann baut sich alles neu auf
+      var open = 2, one = function () { if (--open === 0) go(); };
+      leaveAll(one); accOut().then(one);
+    } else go();
   }
   $('demoSw').addEventListener('click', function () { setDemo(!S.demo); });
   $('demoBtn2').addEventListener('click', function () { setDemo(true); });
@@ -1244,8 +1772,9 @@
   /* Teilen: nur Fragen, Antworten und Rubriken, ohne deinen Lernstand */
   function shareData() {
     var used = {};
-    var cards = db.cards.map(function (c) { used[c.cat] = 1; return { cat: c.cat, q: c.q, a: c.a }; });
-    return { version: 2, cats: db.cats.filter(function (c) { return used[c]; }), cards: cards };
+    var cards = db.cards.map(function (c) { used[c.cat] = 1; var o = { cat: c.cat, q: c.q, a: c.a }; if (c.tags) o.tags = c.tags; if (c.img) o.img = c.img; return o; });
+    var uc = db.cats.filter(function (c) { return used[c]; }), cl = {}; uc.forEach(function (c) { cl[c] = db.colors[c]; });
+    return { version: 2, cats: uc, colors: cl, cards: cards };
   }
   function shareFallback(text) {
     download('karteikarten.json', text, 'application/json');
@@ -1265,35 +1794,118 @@
       .catch(function (e) { if (!e || e.name !== 'AbortError') shareFallback(text); });
   });
   $('importBtn').addEventListener('click', function () { $('importFile').click(); });
+  /* Tabellen lesen: CSV, Tab-getrennt (Anki "Notes in Plain Text", Quizlet). Trenner wird erkannt. */
+  function parseTable(txt) {
+    txt = txt.replace(/^﻿/, '');
+    var lines = txt.split(/\r?\n/).filter(function (l) { return l.trim() !== '' && l.charAt(0) !== '#'; });
+    if (!lines.length) return [];
+    var first = lines[0], sep = first.indexOf('\t') >= 0 ? '\t' : first.indexOf(';') >= 0 ? ';' : ',';
+    var rows = [], row = [], cell = '', q = false, i, ch, t = lines.join('\n');
+    for (i = 0; i < t.length; i++) {
+      ch = t[i];
+      if (q) { if (ch === '"') { if (t[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += ch; }
+      else if (ch === '"' && cell === '') q = true;
+      else if (ch === sep) { row.push(cell); cell = ''; }
+      else if (ch === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+      else cell += ch;
+    }
+    row.push(cell); rows.push(row);
+    return rows;
+  }
+  function plain(t) {   // Anki speichert oft HTML
+    return String(t).replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div)>/gi, '\n').replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&')
+      .replace(/\{\{c\d+::(.+?)(::.*?)?\}\}/g, '{{$1}}').replace(/\n{3,}/g, '\n\n').trim();
+  }
+  function tableToData(rows, name) {
+    var cols = { q: 0, a: 1, cat: -1, tags: 2 }, head = rows[0] && rows[0].map(function (x) { return flat(x); }), hasHead = false;
+    if (head && head.some(function (h) { return /^(frage|question|front|vorderseite|begriff|term)$/.test(h); })) {
+      hasHead = true; cols = { q: -1, a: -1, cat: -1, tags: -1 };
+      head.forEach(function (h, i) {
+        if (/^(frage|question|front|vorderseite|begriff|term)$/.test(h)) cols.q = i;
+        else if (/^(antwort|loesung|losung|answer|back|rueckseite|ruckseite|definition)$/.test(h)) cols.a = i;
+        else if (/^(rubrik|kategorie|category|deck|cat)$/.test(h)) cols.cat = i;
+        else if (/^(tags?|schlagworte)$/.test(h)) cols.tags = i;
+      });
+    }
+    var base = String(name || '').replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim().slice(0, 40) || 'Importiert';
+    var out = [];
+    rows.slice(hasHead ? 1 : 0).forEach(function (r) {
+      var qv = cols.q >= 0 ? plain(r[cols.q] || '') : '', av = cols.a >= 0 ? plain(r[cols.a] || '') : '';
+      if (!qv || (!av && !hasCloze(qv))) return;
+      var o = { q: qv, a: av, cat: (cols.cat >= 0 && isStr(r[cols.cat])) ? r[cols.cat].trim().slice(0, 40) : base };
+      if (cols.tags >= 0 && r[cols.tags]) o.tags = String(r[cols.tags]).split(/[\s,;]+/).filter(Boolean);
+      out.push(o);
+    });
+    return out;
+  }
+  function addCards(list, colors) {
+    var have = {}, added = 0;
+    db.cards.forEach(function (c) { have[c.cat + '\n' + c.q + '\n' + c.a] = 1; });
+    list.forEach(function (c) {
+      var k = c.cat + '\n' + c.q + '\n' + c.a;
+      if (have[k]) return;
+      have[k] = 1; added++;
+      if (db.cats.indexOf(c.cat) < 0) { db.cats.push(c.cat); db.colors[c.cat] = (colors && PALETTE.indexOf(colors[c.cat]) >= 0) ? colors[c.cat] : nextColor(); }
+      var o = { id: uid(), q: c.q, a: c.a || clozeWords(c.q).join(', '), cat: c.cat }, tg = cleanTags(c.tags);
+      if (tg.length) o.tags = tg;
+      if (okImg(c.img)) o.img = c.img;
+      db.cards.push(o);
+    });
+    save(); renderListChips(); renderList();
+    toast(added + ' Karten hinzugefügt' + (added < list.length ? ', ' + (list.length - added) + ' schon vorhanden' : ''));
+  }
   $('importFile').addEventListener('change', function (e) {
     var f = e.target.files[0];
     if (!f) return;
     var r = new FileReader();
     r.onload = function () {
       try {
-        var txt = String(r.result), i = txt.indexOf('{'), j = txt.lastIndexOf('}');   // .json oder karteikarten.js
+        var txt = String(r.result), t0 = txt.replace(/^﻿/, '').trimStart().charAt(0);
+        if (/\.(csv|tsv|txt)$/i.test(f.name) && t0 !== '{' && t0 !== '[') {   // Tabelle
+          var list = tableToData(parseTable(txt), f.name);
+          if (!list.length) { toast('Keine Karten in der Tabelle gefunden'); return; }
+          addCards(list);
+          return;
+        }
+        var i = txt.indexOf('{'), j = txt.lastIndexOf('}');   // .json oder karteikarten.js
         var d = parseData(JSON.parse(txt.slice(i, j + 1)));
-        d.cats.forEach(ensureCat);
-        var have = {}, added = 0;
-        db.cards.forEach(function (c) { have[c.cat + '\n' + c.q + '\n' + c.a] = 1; });
-        d.cards.forEach(function (c) {
-          var k = c.cat + '\n' + c.q + '\n' + c.a;
-          if (have[k]) return;
-          have[k] = 1; added++;
-          db.cards.push({ id: uid(), q: c.q, a: c.a, cat: c.cat });
-        });
-        save(); renderListChips(); renderList();
-        toast(added + ' Karten hinzugefügt' + (added < d.cards.length ? ', ' + (d.cards.length - added) + ' schon vorhanden' : ''));
+        addCards(d.cards, d.colors);
       } catch (err) { toast('Datei konnte nicht gelesen werden'); }
     };
     r.readAsText(f);
     e.target.value = '';
   });
+  $('csvBtn').addEventListener('click', function () {
+    if (!db.cards.length) { toast('Noch keine Karten'); return; }
+    var esc = function (x) { return '"' + String(x == null ? '' : x).replace(/"/g, '""') + '"'; };
+    var lines = ['Frage;Lösung;Rubrik;Tags'].concat(db.cards.map(function (c) { return [c.q, c.a, c.cat, (c.tags || []).join(' ')].map(esc).join(';'); }));
+    download('karteikarten.csv', '﻿' + lines.join('\r\n') + '\r\n', 'text/csv');
+    toast('karteikarten.csv gespeichert');
+  });
+  /* Drucken: Bogen mit Frage links und Lösung rechts, zum Ausschneiden oder als Spickzettel */
+  $('printBtn').addEventListener('click', function () {
+    var term = flat($('listSearch').value);
+    var items = db.cards.filter(function (c) { return (listCat === null || c.cat === listCat) && (!term || flat([c.q, c.a, c.cat].concat(c.tags || []).join(' ')).indexOf(term) >= 0); });
+    if (!items.length) { toast('Keine Karten zum Drucken'); return; }
+    var host = $('printArea'); host.textContent = '';
+    host.appendChild(el('h1', null, 'Kartenbox' + (listCat ? ': ' + listCat : '')));
+    items.forEach(function (c) {
+      var row = el('div', 'prow');
+      var q = el('div', 'pq', c.q); if (c.img) { var im = el('img'); im.src = c.img; im.alt = ''; q.appendChild(im); }
+      row.appendChild(q); row.appendChild(el('div', 'pa', aShow(c)));
+      host.appendChild(row);
+    });
+    var done = function () { host.textContent = ''; window.removeEventListener('afterprint', done); };
+    window.addEventListener('afterprint', done);
+    window.print();
+  });
 
   /* ===== Rubriken ===== */
-  function renameCat(old, n) {
+  function renameCat(old, n, color) {
     if (db.cats.some(function (c) { return c !== old && sameName(c, n); })) return 'Diese Rubrik gibt es schon.';
     db.cats = db.cats.map(function (c) { return c === old ? n : c; });
+    var oc = db.colors[old]; delete db.colors[old]; db.colors[n] = PALETTE.indexOf(color) >= 0 ? color : (oc || nextColor());
     db.cards.forEach(function (c) { if (c.cat === old) c.cat = n; });
     if (S.cat === old) S.cat = n;
     if (listCat === old) listCat = n;
@@ -1308,17 +1920,18 @@
     db.cats.forEach(function (name) {
       var item = el('div', 'item');
       var box = el('div', 'txtbox');
-      box.appendChild(el('p', 'q', name));
+      var qn = el('p', 'q', name), dt = el('i', 'dot'); dt.style.background = catColor(name); qn.insertBefore(dt, qn.firstChild);
+      box.appendChild(qn);
       box.appendChild(el('p', 'a', countIn(name) + ' Karten'));
       var acts = el('div', 'acts');
-      var rb = el('button', 'btn', 'Umbenennen'); rb.type = 'button';
-      rb.addEventListener('click', function () { askName('Rubrik umbenennen', name, function (n) { return renameCat(name, n); }); });
+      var rb = el('button', 'btn', 'Ändern'); rb.type = 'button';
+      rb.addEventListener('click', function () { askName('Rubrik ändern', name, function (n, col) { return renameCat(name, n, col); }, catColor(name)); });
       var del = el('button', 'btn danger', 'Löschen'); del.type = 'button';
       del.disabled = db.cats.length < 2;
       del.addEventListener('click', function () {
         confirmDlg('Rubrik löschen?', '„' + name + '“ mit ' + countIn(name) + ' Karten wird gelöscht. Das lässt sich nicht rückgängig machen.', function () {
           db.cards = db.cards.filter(function (c) { return c.cat !== name; });
-          db.cats = db.cats.filter(function (c) { return c !== name; });
+          db.cats = db.cats.filter(function (c) { return c !== name; }); delete db.colors[name];
           if (S.cat === name) S.cat = null;
           if (listCat === name) listCat = null;
           save(); renderCats(); toast('Rubrik gelöscht');
@@ -1330,7 +1943,7 @@
     });
   }
   $('newCatBtn').addEventListener('click', function () {
-    askName('Neue Rubrik', '', function (n) { var e = createCat(n); if (!e) renderCats(); return e; });
+    askName('Neue Rubrik', '', function (n, col) { var e = createCat(n, col); if (!e) renderCats(); return e; });
   });
 
   /* ===== Optionen ===== */
@@ -1455,8 +2068,9 @@
     var host = $('optHost');
     host.textContent = '';
     REF = [];
-    function group(title) { var g = el('section', 'group'); g.appendChild(el('h3', null, title)); host.appendChild(g); return g; }
-    function row(g, label, ctl) { var r = el('div', 'set'); r.appendChild(el('span', 'lab', label)); r.appendChild(ctl); g.appendChild(r); }
+    function tape() { return el('span', 'neu', 'Neu'); }
+    function group(title, neu) { var g = el('section', 'group'), h = el('h3', null, title); if (neu && neuNow) h.appendChild(tape()); g.appendChild(h); host.appendChild(g); return g; }
+    function row(g, label, ctl, neu) { var r = el('div', 'set'), l = el('span', 'lab', label); if (neu && neuNow) l.appendChild(tape()); r.appendChild(l); r.appendChild(ctl); g.appendChild(r); }
     var px = function (x) { return x + ' px'; };
     var onOff = [{ v: true, label: 'An' }, { v: false, label: 'Aus' }];
 
@@ -1482,9 +2096,38 @@
     row(g4, 'Sekunden', stepper('lernen.sekunden', 10, 60, 5, function (x) { return x + ' s'; }, function () { return CFG.lernen.timer; }));
     row(g4, 'Tagesziel', stepper('lernen.tagesziel', 0, 200, 5, function (x) { return x ? x + ' Karten' : 'aus'; }));
     row(g4, 'Animation', seg('animation.an', onOff));
+    if (window.innerWidth >= 900) {   // am Handy gibt es keinen Player, dort wäre kein Platz
+      var gp = group('Kassettenplayer', true);
+      row(gp, 'Player auf dem Tisch', seg('lernen.player', onOff));
+      row(gp, 'Sekunden pro Seite', stepper('lernen.auto', 3, 30, 1, function (x) { return x + ' s'; }, function () { return CFG.lernen.player; }));
+      gp.appendChild(el('p', 'hint', 'Spielt Fragen und Lösungen immer wieder ab, zum Einprägen. Nur am Computer.'));
+    }
     row(g4, 'Tempo', seg('animation.tempo', [{ v: 0.6, label: 'Langsam' }, { v: 1, label: 'Normal' }, { v: 1.6, label: 'Schnell' }]));
     row(g4, 'Runde mischen', seg('lernen.mischen', onOff));
     row(g4, 'Tastatur', seg('lernen.tastatur', onOff));
+
+    var g5 = group('Lernarten', true);
+    row(g5, 'Richtung', seg('lernen.richtung', [{ v: 'vor', label: 'Normal' }, { v: 'rueck', label: 'Rückwärts' }, { v: 'misch', label: 'Gemischt' }]), true);
+    row(g5, 'Antwort tippen', seg('lernen.tippen', onOff), true);
+    if (window.speechSynthesis) {
+      row(g5, 'Vorlesen', seg('lernen.vorlesen', [{ v: 'aus', label: 'Aus' }, { v: 'frage', label: 'Frage' }, { v: 'loesung', label: 'Lösung' }, { v: 'beides', label: 'Beides' }]), true);
+      row(g5, 'Sprache', seg('lernen.sprache', [{ v: 'de-DE', label: 'DE' }, { v: 'en-GB', label: 'EN' }, { v: 'fr-FR', label: 'FR' }, { v: 'es-ES', label: 'ES' }, { v: 'it-IT', label: 'IT' }]), true);
+    }
+    if (window.speechSynthesis) {
+      var nv = 0; try { nv = (speechSynthesis.getVoices() || []).length; } catch (e) {}
+      var vp = el('p', 'hint'); g5.appendChild(vp);
+      var vtext = function () {
+        var vf = voiceFor(CFG.lernen.sprache);
+        vp.textContent = !nv ? 'Dein Browser meldet keine Stimmen. Vorlesen geht dann nicht.' : vf ? 'Stimme: ' + vf.name : 'Keine ' + LANGN[CFG.lernen.sprache] + 'e Stimme gefunden. Installiere sie in den Systemeinstellungen unter Sprache.';
+      };
+      vtext(); REF.push(vtext);
+      var tb = el('button', 'btn', 'Stimme testen'); tb.type = 'button';
+      tb.addEventListener('click', function () { try { speechSynthesis.cancel(); say(LANGT[CFG.lernen.sprache], false); } catch (e) { toast('Vorlesen geht hier nicht'); } });
+      tb.disabled = !nv; g5.appendChild(tb);
+    }
+    row(g5, 'Karten pro Prüfung', stepper('lernen.pruefung', 5, 50, 5, String), true);
+    var eb = el('button', 'btn primary', 'Prüfung starten'); eb.type = 'button'; eb.addEventListener('click', startExam);
+    g5.appendChild(eb);
     row(g4, 'Design', seg('design.thema', [{ v: 'auto', label: 'Auto' }, { v: 'hell', label: 'Hell' }, { v: 'dunkel', label: 'Dunkel' }]));
 
     var gi = group('App');
@@ -1525,6 +2168,10 @@
 
     var gl = group('Lernstand');
     gl.appendChild(el('p', null, 'Gewusste Karten rutschen ein Fach höher und kommen später wieder. Nochmal schickt sie zurück in Fach 1.'));
+    var stB = el('button', 'btn primary', 'Statistik und Lernkurve'); stB.type = 'button';
+    stB.addEventListener('click', function () { openStats(); });
+    var sdB = el('button', 'btn', 'Statistik-Demo'); sdB.type = 'button'; sdB.title = 'Beispieldaten, schließt nach 2 Minuten'; sdB.addEventListener('click', function () { openStats(true); });
+    gl.appendChild(stB); gl.appendChild(sdB);
     var rb = el('button', 'btn danger', 'Lernstand zurücksetzen'); rb.type = 'button';
     rb.addEventListener('click', function () {
       confirmDlg('Lernstand zurücksetzen?', 'Alle Karten gelten wieder als neu, Tagesziel und Serie starten bei null. Die Karten bleiben.', function () {
@@ -1676,6 +2323,17 @@
     $('anbieter').textContent = 'github.com/' + UPDATE_REPO.split('/')[0] + '. Fragen zum Datenschutz stellst du dort.';
   }
   setTimeout(function () { checkUpdate(false); }, 3000);
+
+  /* Beim ersten Öffnen am Tag: kurzer Hinweis auf die Optionen (kein Muss) */
+  var DAY_KEY = 'kartenbox-hinweis-tag';
+  function dayHint() {
+    var today = dayKey(), seen = '';
+    try { seen = localStorage.getItem(DAY_KEY) || ''; } catch (e) { return; }
+    if (seen === today || document.querySelector('dialog[open]')) return;
+    try { localStorage.setItem(DAY_KEY, today); } catch (e) { return; }
+    confirmDlg('Bereit für heute?', 'Ein Blick in die Optionen lohnt sich. Countdown, Vorlesen, Tagesziel und mehr machen das Lernen leichter. Du kannst aber auch gleich loslegen.', function () { show('opts'); }, 'Optionen ansehen', false, 'Gleich lernen');
+  }
+  setTimeout(dayHint, 2200);
 
   load();
   rebuildStudy();

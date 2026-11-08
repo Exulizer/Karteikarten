@@ -1,16 +1,16 @@
 {
-  "version": "1.0.1",
-  "hinweis": "Neue Navigation, Zubehör am Schreibtisch, Filterleiste klebt oben, bessere Handy-Ansicht.",
+  "version": "1.1.0",
+  "hinweis": "Neue Lernarten (Lückentext, Tippen, Rückwärts, Prüfung, Vorlesen), Bilder, Tags und Suche, CSV-Import, Statistik, Drucken.",
   "files": [
     {
       "pfad": "karteikarten.html",
-      "sha256": "b0ccd937ad7770493efb36fe492641716e7a513003cf92ddfa678d02462bbe93",
-      "groesse": 145538,
+      "sha256": "35b3211fb7a08bef6cd8062e8d26e9a177674d68e1586438522fe9c1aef34fe2",
+      "groesse": 186093,
       "optional": false
     },
     {
       "pfad": "sw.js",
-      "sha256": "65931ab7d9f0e24b268158a48a0724f9d741fcf2ab7197b5d3a65505a5a358e4",
+      "sha256": "43c1d2aab8b933b6585ba56687b2b8b6a5a8158ecb1d6ea8b9b04ba56020c3e7",
       "groesse": 1308,
       "optional": true
     },
