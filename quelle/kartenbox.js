@@ -1401,6 +1401,8 @@
       if (!S.queue.length) { autoStop(); return; }
     }
     var id = AUTO.rand ? S.queue[Math.floor(Math.random() * S.queue.length)] : S.queue[0], ms = CFG.lernen.auto * 1000;
+    if (!S.els[id]) { S.queue = [id].concat(S.queue.filter(function (x) { return x !== id; })); fill(0); }   // nur die vorderen Karten haben ein Element, die gewählte holen wir nach vorn
+    if (!S.els[id]) { autoStop(); return; }
     select(id); stopTimer(); autoPhase('Frage', ms);
     AUTO.t = setTimeout(function () {
       if (!AUTO.on) return;
