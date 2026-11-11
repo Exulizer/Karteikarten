@@ -1,6 +1,6 @@
-/* Kartenbox Service Worker: legt die App beim ersten Besuch im Cache, danach läuft sie offline. */
-var CACHE = 'kartenbox-v2';
-var FILES = ['./', './karteikarten.html', './einstellungen.js', './karteikarten.js', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png'];
+/* KarteiDeck Service Worker: legt die App beim ersten Besuch im Cache, danach läuft sie offline. */
+var CACHE = 'karteideck-v3';
+var FILES = ['./', './karteikarten.html', './einstellungen.js', './karteikarten.js', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) {
     return Promise.all(FILES.map(function (f) { return c.add(f).catch(function () {}); }));   // fehlende optionale Dateien stören nicht
@@ -13,6 +13,7 @@ self.addEventListener('activate', function (e) {
 });
 self.addEventListener('fetch', function (e) {
   if (e.request.method !== 'GET') return;
+  if (new URL(e.request.url).pathname.indexOf('/api/') >= 0) return;   // Konto-Schnittstelle nie zwischenspeichern
   e.respondWith(caches.match(e.request).then(function (hit) {
     var net = fetch(e.request).then(function (r) {   // im Hintergrund aktualisieren
       if (r && r.ok) { var cp = r.clone(); caches.open(CACHE).then(function (c) { c.put(e.request, cp); }); }

@@ -1,41 +1,41 @@
 {
-  "version": "1.1.0",
-  "hinweis": "Neue Lernarten (Lückentext, Tippen, Rückwärts, Prüfung, Vorlesen), Bilder, Tags und Suche, CSV-Import, Statistik, Drucken.",
+  "version": "1.2.0",
+  "hinweis": "Wortbank bei Lückentext, Import mit Formatprüfung (CSV, TXT, JSON), Drehen und Fächer auf der Vorabseite, Skalierung auf großen Bildschirmen.",
   "files": [
     {
       "pfad": "karteikarten.html",
-      "sha256": "35b3211fb7a08bef6cd8062e8d26e9a177674d68e1586438522fe9c1aef34fe2",
-      "groesse": 186093,
+      "sha256": "d0b0198e37eda0dade8ac3d364ca314261e3a67b64968149240330801b6eea39",
+      "groesse": 220498,
       "optional": false
     },
     {
       "pfad": "sw.js",
-      "sha256": "43c1d2aab8b933b6585ba56687b2b8b6a5a8158ecb1d6ea8b9b04ba56020c3e7",
-      "groesse": 1308,
+      "sha256": "8c2dfe776779ddef3ab5c47b66ef3e41fe789375e78bbeb647a30d3eece0b30e",
+      "groesse": 1452,
       "optional": true
     },
     {
       "pfad": "manifest.webmanifest",
-      "sha256": "52a17091c1358a1e1d760a2405c561a3d301c0d728bf9f5cbbfed09656df45b9",
-      "groesse": 561,
+      "sha256": "50e055407bacd2712638adc6e60f8b59160105c3b3c8b503574cbd042f9c43fe",
+      "groesse": 589,
       "optional": true
     },
     {
       "pfad": "icon.svg",
-      "sha256": "5de88332cf4ad67189f6216326a1f3034c3d56db8170a690aefec47e8edbd43f",
-      "groesse": 717,
+      "sha256": "457b6310ece0709fed2ad498eab88c74642533f1e1e5595db4909b5d2e08d45f",
+      "groesse": 867,
       "optional": true
     },
     {
       "pfad": "icon-192.png",
-      "sha256": "69396637dd62ce91feca370be7b72124c86fce0cbcf52f14c62daa203ee966f0",
-      "groesse": 9173,
+      "sha256": "407c219fa5e03a437817f912cdee29926eb93fd5927c035de1d6b209e5877a6e",
+      "groesse": 9074,
       "optional": true
     },
     {
       "pfad": "icon-512.png",
-      "sha256": "776fb7730a6d70f73dc968eb418a10253277aee9ab9a3158c7a79b1718a55db7",
-      "groesse": 29185,
+      "sha256": "35f44059172b2ab6fad56fc62559ed2cfa280f8c0ab526437989ef7888959185",
+      "groesse": 28008,
       "optional": true
     }
   ]

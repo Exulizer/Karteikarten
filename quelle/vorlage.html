@@ -3,14 +3,29 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kartenbox</title>
+<meta name="kd-version" content="__VERSION__">
+<title>KarteiDeck – Karteikarten online lernen, kostenlos</title>
+<meta name="description" content="Karteikarten online lernen und erstellen: Karteikasten nach Leitner-System, Lückentext, Import aus Anki und Quizlet. Kostenlos, ohne Werbung, auch offline.">
+<meta name="robots" content="index, follow, max-image-preview:large">
 <meta name="theme-color" content="#c9a676">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Crect x=%226%22 y=%229%22 width=%2230%22 height=%2222%22 rx=%223%22 transform=%22rotate%28-9 21 20%29%22 fill=%22%23f2dd7a%22 stroke=%22%232a2619%22 stroke-width=%222%22/%3E%3Cg transform=%22rotate%287 27 28%29%22%3E%3Crect x=%2211%22 y=%2215%22 width=%2231%22 height=%2223%22 rx=%223%22 fill=%22%23fbee9a%22 stroke=%22%232a2619%22 stroke-width=%222%22/%3E%3Cline x1=%2212%22 y1=%2222%22 x2=%2241%22 y2=%2222%22 stroke=%22%23c2402f%22 stroke-width=%222%22/%3E%3Cline x1=%2212%22 y1=%2228%22 x2=%2241%22 y2=%2228%22 stroke=%22%235b86c9%22 stroke-width=%221.4%22/%3E%3Cline x1=%2212%22 y1=%2233%22 x2=%2241%22 y2=%2233%22 stroke=%22%235b86c9%22 stroke-width=%221.4%22/%3E%3C/g%3E%3C/svg%3E">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="KarteiDeck">
+<meta property="og:locale" content="de_DE">
+<meta property="og:title" content="KarteiDeck – Karteikarten online lernen, kostenlos">
+<meta property="og:description" content="Eigene Karteikarten schreiben und im Karteikasten wiederholen. Kostenlos, ohne Werbung, auch offline.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="KarteiDeck – Karteikarten online lernen, kostenlos">
+<meta name="twitter:description" content="Eigene Karteikarten schreiben und im Karteikasten wiederholen. Kostenlos, ohne Werbung, auch offline.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Cg stroke=%22%232a2619%22 stroke-width=%221.7%22 stroke-linejoin=%22round%22 transform=%22translate%284 1.8%29%22%3E%3Cg%3E%3Crect x=%229%22 y=%2211%22 width=%2228%22 height=%2221%22 rx=%222.6%22 transform=%22rotate%28-20 22 40%29%22 fill=%22%23a9c0ec%22/%3E%3Crect x=%229%22 y=%2211%22 width=%2228%22 height=%2221%22 rx=%222.6%22 transform=%22rotate%28-8 22 40%29%22 fill=%22%23ffb5cb%22/%3E%3C/g%3E%3Cg%3E%3Cg transform=%22rotate%285 22 40%29%22%3E%3Crect x=%229%22 y=%2211%22 width=%2228%22 height=%2221%22 rx=%222.6%22 fill=%22%23fbee9a%22/%3E%3Cline x1=%2213%22 y1=%2217.5%22 x2=%2233%22 y2=%2217.5%22 stroke=%22%23c2402f%22 stroke-width=%221.6%22/%3E%3Cline x1=%2213%22 y1=%2222.5%22 x2=%2233%22 y2=%2222.5%22 stroke=%22%235b86c9%22 stroke-width=%221.2%22/%3E%3Cline x1=%2213%22 y1=%2227%22 x2=%2228%22 y2=%2227%22 stroke=%22%235b86c9%22 stroke-width=%221.2%22/%3E%3C/g%3E%3C/g%3E%3C/g%3E%3C/svg%3E">
+<link rel="alternate icon" href="favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<!--SEO-->
 <script src="einstellungen.js"></script>
 <script src="karteikarten.js"></script>
 <link rel="stylesheet" href="kartenbox.css">
 </head>
 <body>
+<noscript><div class="nojs"><p class="nojs-t">KarteiDeck: Karteikarten online lernen</p><p>Für KarteiDeck wird JavaScript gebraucht. Mehr dazu: <a href="karteikarten-ohne-anmeldung.html">ohne Anmeldung</a>, <a href="karteikarten-offline-lernen.html">offline</a>, <a href="leitner-system.html">Leitner-System</a>, <a href="lueckentext-karteikarten.html">Lückentext</a>, <a href="vokabeln-lernen-karteikarten.html">Vokabeln</a>, <a href="impressum.html">Impressum</a>, <a href="datenschutz.html">Datenschutz</a>.</p></div></noscript>
 <div class="desk" aria-hidden="true">
   <svg class="obj pen" viewBox="0 0 28 210"><rect x="10" y="3" width="8" height="24" rx="3" fill="#c9ced6"/><rect x="7" y="22" width="14" height="132" rx="7" fill="#2b4a9a"/><rect x="10" y="30" width="3" height="118" rx="1.5" fill="#fff" opacity=".3"/><path d="M21 34h2.5v56q0 3-3 3H21z" fill="#aab2bd"/><rect x="7" y="150" width="14" height="24" fill="#1d2f66"/><path d="M7 174h14l-5 22h-4z" fill="#1d2f66"/><path d="M12 196h4l-1.4 9h-1.2z" fill="#7d838c"/></svg>
   <svg class="obj marker" viewBox="0 0 34 150"><rect x="2" y="6" width="30" height="46" rx="6" fill="#ff9ec0"/><rect x="26" y="12" width="3" height="30" rx="1.5" fill="#fff" opacity=".45"/><rect x="5" y="46" width="24" height="86" rx="5" fill="#f06fa0"/><rect x="9" y="74" width="16" height="32" fill="#fff" opacity=".6"/><path d="M8 130h18l-4 14H12z" fill="#c2185b"/></svg>
@@ -18,10 +33,11 @@
 </div>
 <div class="wrap">
   <header>
-    <h1><button class="brand" id="homeBtn" type="button" aria-label="Kartenbox, zur Startseite" title="Zur Startseite"><svg class="logo" viewBox="0 0 48 48" width="40" height="40" aria-hidden="true"><g class="lb"><rect x="6" y="9" width="30" height="22" rx="3" transform="rotate(-9 21 20)" fill="#f2dd7a" stroke="#2a2619" stroke-width="2"/></g><g class="lf"><g transform="rotate(7 27 28)"><rect x="11" y="15" width="31" height="23" rx="3" fill="#fbee9a" stroke="#2a2619" stroke-width="2"/><line x1="12" y1="22" x2="41" y2="22" stroke="#c2402f" stroke-width="2"/><line x1="12" y1="28" x2="41" y2="28" stroke="#5b86c9" stroke-width="1.4"/><line x1="12" y1="33" x2="41" y2="33" stroke="#5b86c9" stroke-width="1.4"/></g></g></svg><b>Kartenbox</b></button></h1>
+    <div class="h1"><button class="brand" id="homeBtn" type="button" aria-label="KarteiDeck, zur Startseite" title="Zur Startseite"><svg class="logo" viewBox="0 0 48 48" width="40" height="40" aria-hidden="true"><g stroke="#2a2619" stroke-width="1.7" stroke-linejoin="round" transform="translate(4 1.8)"><g class="lb"><rect x="9" y="11" width="28" height="21" rx="2.6" transform="rotate(-20 22 40)" fill="#a9c0ec"/><rect x="9" y="11" width="28" height="21" rx="2.6" transform="rotate(-8 22 40)" fill="#ffb5cb"/></g><g class="lf"><g transform="rotate(5 22 40)"><rect x="9" y="11" width="28" height="21" rx="2.6" fill="#fbee9a"/><line x1="13" y1="17.5" x2="33" y2="17.5" stroke="#c2402f" stroke-width="1.6"/><line x1="13" y1="22.5" x2="33" y2="22.5" stroke="#5b86c9" stroke-width="1.2"/><line x1="13" y1="27" x2="28" y2="27" stroke="#5b86c9" stroke-width="1.2"/></g></g></g></svg><b>KarteiDeck</b></button></div>
     <div class="hright">
       <button class="switch" id="demoSw" type="button" role="switch" aria-checked="false" title="Demo-Karten ein- oder ausschalten"><i></i>Demo</button>
       <button class="pill inst" id="installBtn" type="button" hidden aria-label="App installieren"><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M10 3v9m0 0-3.5-3.5M10 12l3.5-3.5M4 16h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="lbl">Installieren</span></button>
+      <button class="pill acc" id="accBtn" type="button" aria-label="Konto" hidden><svg viewBox="0 0 448 512" aria-hidden="true" focusable="false"><path d="M224 256A128 128 0 1 0 224 0a128 128 0 1 0 0 256zm-45.7 48C79.8 304 0 383.8 0 482.3C0 498.7 13.3 512 29.7 512H418.3c16.4 0 29.7-13.3 29.7-29.7C448 383.8 368.2 304 269.7 304H178.3z"/></svg><span class="lbl">Konto</span></button>
       <button class="iconbtn" id="themeBtn" type="button" aria-label="Dunkles Design"></button>
     </div>
   </header>
@@ -79,6 +95,10 @@
       <button class="btn" id="typeBtn" type="button" disabled>Prüfen</button>
       <span id="typeRes" role="status"></span>
     </div>
+    <div class="bankrow" id="bankRow" hidden>
+      <p id="bankInfo" role="status"></p>
+      <div class="bankwords" id="bankWords"></div>
+    </div>
     <ol class="steps" id="steps" hidden>
       <li><b>1</b>Karte wählen</li>
       <li><b>2</b>Lösung ansehen</li>
@@ -104,7 +124,8 @@
     <div id="step1">
       <p class="step-label">1. Frage</p>
       <textarea id="newQ" placeholder="Deine Frage"></textarea>
-      <p class="hint">Lückentext: Setze das gesuchte Wort in {{doppelte Klammern}}.</p>
+      <div class="clozebar"><button class="btn" id="newClozeBtn" type="button">Lücke</button><span>Wort antippen oder markieren, dann „Lücke“ drücken.</span></div>
+      <p class="clozeprev" id="newClozePrev" hidden></p>
       <div class="imgpick">
         <button class="btn" id="newImgBtn" type="button">Bild zur Frage</button>
         <input type="file" id="newImgFile" accept="image/*" hidden>
@@ -114,7 +135,7 @@
       <div class="row"><button class="btn primary" id="toStep2" type="button">Weiter zur Lösung</button></div>
     </div>
     <div id="step2" hidden>
-      <p class="step-label">2. Lösung</p>
+      <p class="step-label" id="step2Lbl">2. Lösung</p>
       <textarea id="newA" placeholder="Die Lösung"></textarea>
       <label class="step-label" for="newTags">Tags (mit Komma, kein Muss)</label>
       <input type="text" id="newTags" maxlength="120" autocomplete="off" placeholder="zum Beispiel Prüfung, Kapitel 3">
@@ -132,8 +153,8 @@
       <article class="hq"><h3>Wie lerne ich?</h3><p>Tippe im Fächer eine Karte an. Dann „Lösung zeigen“ und „Gewusst“ oder „Nochmal“. Gewusste Karten kommen später wieder, schwere früher.</p></article>
       <article class="hq"><h3>Was macht „Weiter“?</h3><p>Die Karte geht in die Ablage links oben und bekommt einen blauen Reiter. Ein Klick auf die Ablage holt sie zurück. Ist die Runde leer, kommt die Ablage von selbst.</p></article>
       <article class="hq"><h3>Was sind Marker und Pinnadel?</h3><p>Rosa heißt Nochmal, Blau heißt Später. Mit der Pinnadel (Taste P) heftest du eine Karte an. Der Modus „Angeheftet“ übt nur diese Karten.</p></article>
-      <article class="hq"><h3>Welche Lernarten gibt es?</h3><p>Unter Optionen, Lernarten: Rückwärts (erst die Lösung), Antwort tippen (die Karte dreht sich und sagt, ob es stimmt) und Vorlesen mit der Stimme deines Geräts. Eine Prüfung stellt zufällige Karten ohne Wiederholung und endet mit einer Note.</p></article>
-      <article class="hq"><h3>Wie mache ich einen Lückentext?</h3><p>Setze beim Anlegen das Wort in doppelte Klammern: „Der {{Mond}} umkreist die Erde.“ Vorne ist das Wort eine Lücke, hinten steht der ganze Satz.</p></article>
+      <article class="hq"><h3>Welche Lernarten gibt es?</h3><p>Unter Optionen, Lernarten: Rückwärts (erst die Lösung), Antwort tippen (die Karte dreht sich und sagt, ob es stimmt), Wortbank bei Lückentext (Wörter antippen statt eintippen, gut für Kinder) und Vorlesen mit der Stimme deines Geräts. Eine Prüfung stellt zufällige Karten ohne Wiederholung und endet mit einer Note.</p></article>
+      <article class="hq"><h3>Wie mache ich einen Lückentext?</h3><p>Schreibe den Satz, tippe das fehlende Wort an (oder markiere es) und drücke auf „Lücke“. Aus „Der Mond umkreist die Erde.“ wird „Der {{Mond}} umkreist die Erde.“ Eine eigene Lösung brauchst du nicht. Beim Lernen zeigt die App sofort grün oder rot.</p></article>
       <article class="hq"><h3>Wie bekommen Rubriken Farben?</h3><p>Beim Anlegen einer Rubrik wählst du eine Farbe. Im Tab „Rubriken“ änderst du sie mit „Ändern“. Die Farbe erscheint als Punkt und als Streifen oben auf der Karte.</p></article>
       <article class="hq"><h3>Was zeigt die Statistik?</h3><p>Ein Klick auf „Serie … · Statistik“ zeigt die letzten 14 Tage, einen Kalender mit Stempel für jedes erreichte Tagesziel, den Karteikasten und deine schwersten Karten.</p></article>
       <article class="hq"><h3>Welche Tasten gibt es?</h3><p>Leertaste dreht die Karte. Pfeil rechts: Gewusst. Pfeil links: Nochmal. P heftet an, Esc legt zurück, 1 bis 7 wählt eine Karte.</p></article>
@@ -197,6 +218,12 @@
   </section>
 </div>
 
+<footer class="foot">
+  <button class="flink" id="ftHome" type="button">Startseite</button>
+  <a class="flink" id="ftImp" href="impressum.html">Impressum</a>
+  <button class="flink" id="ftKt" type="button" hidden>Kontakt</button>
+  <a class="flink" id="ftDs" href="datenschutz.html">Datenschutz</a>
+</footer>
 <div id="measure" aria-hidden="true"></div>
 <div id="printArea" aria-hidden="true"></div>
 
@@ -212,7 +239,9 @@
   <div class="chips" id="editChips"></div>
   <label for="editQ">Frage</label>
   <textarea id="editQ"></textarea>
-  <label for="editA">Lösung</label>
+  <div class="clozebar"><button class="btn" id="editClozeBtn" type="button">Lücke</button><span>Wort antippen oder markieren, dann „Lücke“ drücken.</span></div>
+  <p class="clozeprev" id="editClozePrev" hidden></p>
+  <label for="editA" id="editALbl">Lösung</label>
   <textarea id="editA"></textarea>
   <label for="editTags">Tags (mit Komma)</label>
   <input type="text" id="editTags" maxlength="120" autocomplete="off">
@@ -240,6 +269,74 @@
   </div>
 </dialog>
 
+<dialog id="landing" class="landing" aria-labelledby="landTitle">
+  <div class="ltop"><span>KarteiDeck</span><button class="btn" id="landClose" type="button">Zur App</button></div>
+  <div class="lsheet">
+    <section class="lhero">
+      <svg class="llogo" viewBox="0 0 48 48" width="56" height="56" aria-hidden="true"><g stroke="#2a2619" stroke-width="1.7" stroke-linejoin="round" transform="translate(4 1.8)"><g class="lb"><rect x="9" y="11" width="28" height="21" rx="2.6" transform="rotate(-20 22 40)" fill="#a9c0ec"/><rect x="9" y="11" width="28" height="21" rx="2.6" transform="rotate(-8 22 40)" fill="#ffb5cb"/></g><g class="lf"><g transform="rotate(5 22 40)"><rect x="9" y="11" width="28" height="21" rx="2.6" fill="#fbee9a"/><line x1="13" y1="17.5" x2="33" y2="17.5" stroke="#c2402f" stroke-width="1.6"/><line x1="13" y1="22.5" x2="33" y2="22.5" stroke="#5b86c9" stroke-width="1.2"/><line x1="13" y1="27" x2="28" y2="27" stroke="#5b86c9" stroke-width="1.2"/></g></g></g></svg>
+      <h1 id="landTitle">KarteiDeck<span>Karteikarten online lernen</span></h1>
+      <p class="llead">Lernen mit Karteikarten, so wie auf dem Schreibtisch. Frage vorne, Lösung hinten.</p>
+      <div class="lrow">
+        <button class="btn primary" id="landGo" type="button" autofocus>Los geht’s</button>
+        <button class="btn" id="landDemo" type="button">Demo ansehen</button>
+      </div>
+      <p class="lsmall">Kostenlos, ohne Anmeldung nutzbar, läuft auch offline.</p>
+    </section>
+
+    <section class="lsec">
+      <h3 class="lh">So geht’s</h3>
+      <ol class="lsteps">
+        <li class="lstep paper"><span class="lnum">1</span><h3>Karte schreiben</h3><p>Frage auf die Vorderseite, Lösung auf die Rückseite. Optional mit Bild.</p></li>
+        <li class="lstep paper"><span class="lnum">2</span><h3>Aufdecken</h3><p>Karte umdrehen und ehrlich sagen: Gewusst oder Nochmal.</p></li>
+        <li class="lstep paper"><span class="lnum">3</span><h3>Wiederholen</h3><p>Der Karteikasten (Leitner-System) legt dir Karten wieder vor, wenn es Zeit dafür ist.</p></li>
+      </ol>
+    </section>
+
+    <section class="lsec">
+      <h3 class="lh">Das steckt drin</h3>
+      <ul class="lfeats">
+        <li class="feat"><svg class="fi" viewBox="0 0 576 512" aria-hidden="true" focusable="false"><path d="M48 195.8l209.2 86.1c9.8 4 20.2 6.1 30.8 6.1s21-2.1 30.8-6.1l242.4-99.8c9-3.7 14.8-12.4 14.8-22.1s-5.8-18.4-14.8-22.1L318.8 38.1C309 34.1 298.6 32 288 32s-21 2.1-30.8 6.1L14.8 137.9C5.8 141.6 0 150.3 0 160L0 456c0 13.3 10.7 24 24 24s24-10.7 24-24l0-260.2zm48 71.7L96 384c0 53 86 96 192 96s192-43 192-96l0-116.6-142.9 58.9c-15.6 6.4-32.2 9.7-49.1 9.7s-33.5-3.3-49.1-9.7L96 267.4z"/></svg><h3>Lernen</h3><p>Fächer mit Karten, Countdown, Tastatur. Rückwärts und gemischt mit Konto.</p></li>
+        <li class="feat"><svg class="fi" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><path d="M36.4 353.2c4.1-14.6 11.8-27.9 22.6-38.7l181.2-181.2 33.9-33.9c16.6 16.6 51.3 51.3 104 104l33.9 33.9-33.9 33.9-181.2 181.2c-10.7 10.7-24.1 18.5-38.7 22.6L30.4 510.6c-8.3 2.3-17.3 0-23.4-6.2S-1.4 489.3 .9 481L36.4 353.2zm55.6-3.7c-4.4 4.7-7.6 10.4-9.3 16.6l-24.1 86.9 86.9-24.1c6.4-1.8 12.2-5.1 17-9.7L91.9 349.5zm354-146.1c-16.6-16.6-51.3-51.3-104-104L308 65.5C334.5 39 349.4 24.1 352.9 20.6 366.4 7 384.8-.6 404-.6S441.6 7 455.1 20.6l35.7 35.7C504.4 69.9 512 88.3 512 107.4s-7.6 37.6-21.2 51.1c-3.5 3.5-18.4 18.4-44.9 44.9z"/></svg><h3>Karten schreiben</h3><p>Mit Bild, Tags und Lückentext. Doppelte Fragen werden gemeldet.</p></li>
+        <li class="feat"><svg class="fi" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><path d="M232.5 5.2c14.9-6.9 32.1-6.9 47 0l218.6 101c8.5 3.9 13.9 12.4 13.9 21.8s-5.4 17.9-13.9 21.8l-218.6 101c-14.9 6.9-32.1 6.9-47 0L13.9 149.8C5.4 145.8 0 137.3 0 128s5.4-17.9 13.9-21.8L232.5 5.2zM48.1 218.4l164.3 75.9c27.7 12.8 59.6 12.8 87.3 0l164.3-75.9 34.1 15.8c8.5 3.9 13.9 12.4 13.9 21.8s-5.4 17.9-13.9 21.8l-218.6 101c-14.9 6.9-32.1 6.9-47 0L13.9 277.8C5.4 273.8 0 265.3 0 256s5.4-17.9 13.9-21.8l34.1-15.8zM13.9 362.2l34.1-15.8 164.3 75.9c27.7 12.8 59.6 12.8 87.3 0l164.3-75.9 34.1 15.8c8.5 3.9 13.9 12.4 13.9 21.8s-5.4 17.9-13.9 21.8l-218.6 101c-14.9 6.9-32.1 6.9-47 0L13.9 405.8C5.4 401.8 0 393.3 0 384s5.4-17.9 13.9-21.8z"/></svg><h3>Alle Karten</h3><p>Suchen, ändern, anheften. Import aus CSV, Anki und Quizlet.</p></li>
+        <li class="feat"><svg class="fi" viewBox="0 0 576 512" aria-hidden="true" focusable="false"><path d="M56 225.6L32.4 296.2 32.4 96c0-35.3 28.7-64 64-64l138.7 0c13.8 0 27.3 4.5 38.4 12.8l38.4 28.8c5.5 4.2 12.3 6.4 19.2 6.4l117.3 0c35.3 0 64 28.7 64 64l0 16-365.4 0c-41.3 0-78 26.4-91.1 65.6zM477.8 448L99 448c-32.8 0-55.9-32.1-45.5-63.2l48-144C108 221.2 126.4 208 147 208l378.8 0c32.8 0 55.9 32.1 45.5 63.2l-48 144c-6.5 19.6-24.9 32.8-45.5 32.8z"/></svg><h3>Rubriken</h3><p>Jedes Fach bekommt seine Farbe. Du siehst sofort, was wohin gehört.</p></li>
+        <li class="feat"><svg class="fi" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><path d="M32 64C14.3 64 0 78.3 0 96s14.3 32 32 32l86.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48L480 128c17.7 0 32-14.3 32-32s-14.3-32-32-32L265.3 64C253 35.7 224.8 16 192 16s-61 19.7-73.3 48L32 64zm0 160c-17.7 0-32 14.3-32 32s14.3 32 32 32l246.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48l54.7 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-54.7 0c-12.3-28.3-40.5-48-73.3-48s-61 19.7-73.3 48L32 224zm0 160c-17.7 0-32 14.3-32 32s14.3 32 32 32l54.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48L480 448c17.7 0 32-14.3 32-32s-14.3-32-32-32l-246.7 0c-12.3-28.3-40.5-48-73.3-48s-61 19.7-73.3 48L32 384z"/></svg><h3>Optionen</h3><p>Schrift, Tempo, Tagesziel, Hell und Dunkel. Vorlesen mit Konto.</p></li>
+        <li class="feat"><svg class="fi" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><path d="M256 512a256 256 0 1 0 0-512 256 256 0 1 0 0 512zm0-336c-17.7 0-32 14.3-32 32 0 13.3-10.7 24-24 24s-24-10.7-24-24c0-44.2 35.8-80 80-80s80 35.8 80 80c0 47.2-36 67.2-56 74.5l0 3.8c0 13.3-10.7 24-24 24s-24-10.7-24-24l0-8.1c0-20.5 14.8-35.2 30.1-40.2 6.4-2.1 13.2-5.5 18.2-10.3 4.3-4.2 7.7-10 7.7-19.6 0-17.7-14.3-32-32-32zM224 368a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z"/></svg><h3>Abfragen</h3><p>Mit Konto: Antwort tippen oder Prüfung mit Note und Zeit.</p></li>
+      </ul>
+      <p class="lalso"><b>Außerdem:</b> Serie und Tagesziel. Mit Konto: Statistik mit Lernkurve und Kassettenplayer zum Einprägen. Notizzettel und Taschenrechner am Schreibtisch gibt es am großen Bildschirm.</p>
+    </section>
+
+    <section class="lsec lnote">
+      <h3 class="lh">Deine Daten</h3>
+      <p>Ohne Konto bleiben die Karten im Browser auf deinem Gerät. Kein Tracking, ohne Konto keine Cookies, keine Fremdschriften. Updates holt die App bei GitHub, das lässt sich abschalten.</p>
+      <p>Wichtig: Wer den Browserspeicher löscht, verliert die Karten. Sichere sie darum ab und zu mit „Karten speichern“.</p>
+    </section>
+
+    <section class="lsec lnote lkonto">
+      <h3 class="lh">Mit Konto <span class="lbadge">Geplant</span></h3>
+      <p>Wer sich registriert, hat seine Karten überall. Speichern, bearbeiten, löschen: alles bleibt im eigenen Konto.</p>
+      <p>Auch alle Optionen gehören zum Konto und kommen auf jedem Gerät mit.</p>
+      <p>Sicher: Passwörter liegen nie im Klartext, die Verbindung ist verschlüsselt, jeder sieht nur seine eigenen Daten.</p>
+    </section>
+
+    <section class="lsec">
+      <h3 class="lh">Fragen</h3>
+      <dl class="lfaq">
+        <dt>Kostet das etwas?</dt><dd>Nein.</dd>
+        <dt>Geht das am Handy?</dt><dd>Ja. Notizzettel, Rechner und Player gibt es nur am großen Bildschirm.</dd>
+        <dt>Geht das ohne Internet?</dt><dd>Ja. Nach dem ersten Laden läuft die Seite offline.</dd>
+        <dt>Wie bekomme ich meine Karten auf ein anderes Gerät?</dt><dd>Mit „Karten speichern“ eine Datei erzeugen und dort mit „Karten laden“ öffnen.</dd>
+      </dl>
+      <div class="lmore"><span class="lmt">Mehr dazu:</span><a href="karteikarten-ohne-anmeldung.html">ohne Anmeldung</a><a href="karteikarten-offline-lernen.html">offline</a><a href="leitner-system.html">Leitner-System</a><a href="lueckentext-karteikarten.html">Lückentext</a><a href="vokabeln-lernen-karteikarten.html">Vokabeln</a></div>
+    </section>
+
+    <section class="lhero lend">
+      <p class="llead">Bereit? Die erste Karte ist in einer Minute geschrieben.</p>
+      <div class="lrow"><button class="btn primary" id="landGo2" type="button">Los geht’s</button></div>
+      <p class="lfoot"><a class="flink" id="landImp" href="impressum.html">Impressum</a><button class="flink" id="landKt" type="button" hidden>Kontakt</button><a class="flink" id="landDs" href="datenschutz.html">Datenschutz</a></p>
+    </section>
+  </div>
+</dialog>
+
 <dialog id="confDlg">
   <h2 id="confTitle"></h2>
   <p id="confText" style="overflow-wrap:anywhere"></p>
@@ -247,6 +344,144 @@
     <button class="btn" id="confCancel" type="button">Abbrechen</button>
     <button class="btn danger" id="confOk" type="button">Löschen</button>
   </div>
+</dialog>
+
+<dialog id="accDlg" class="acc" aria-labelledby="accTitle">
+  <h2 id="accTitle">Konto</h2>
+  <p class="acctest" id="accTest" hidden><b>Testmodus.</b> Das Konto liegt nur in diesem Browser und ist nicht sicher. Es dient zum Ausprobieren. Mit PHP-Server wird es echt.</p>
+  <p class="err" id="accErr" role="alert"></p>
+  <p class="accok" id="accMsg"></p>
+
+  <form data-v="login" novalidate>
+    <label for="lgMail">E-Mail</label>
+    <input type="email" id="lgMail" autocomplete="username" placeholder="name@beispiel.de" maxlength="190">
+    <label for="lgPw">Passwort</label>
+    <input type="password" id="lgPw" autocomplete="current-password" placeholder="Dein Passwort" maxlength="200">
+    <div class="row"><button class="btn primary" type="submit">Anmelden</button><button class="btn" type="button" data-go="register">Registrieren</button></div>
+    <p class="acclinks"><button class="flink" type="button" data-go="forgot">Passwort vergessen</button></p>
+  </form>
+
+  <form data-v="register" novalidate>
+    <label for="rgMail">E-Mail</label>
+    <input type="email" id="rgMail" autocomplete="username" placeholder="name@beispiel.de" maxlength="190">
+    <label for="rgPw">Passwort</label>
+    <input type="password" id="rgPw" autocomplete="new-password" placeholder="Mindestens 10 Zeichen" maxlength="200">
+    <label for="rgPw2">Passwort wiederholen</label>
+    <input type="password" id="rgPw2" autocomplete="new-password" placeholder="Noch einmal" maxlength="200">
+    <input type="text" id="rgHp" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" placeholder="Nicht ausfüllen">
+    <p class="acchint">Mit dem Anlegen gilt die <button class="flink" type="button" data-ds>Datenschutzerklärung</button>. Wir schicken dir einen Bestätigungslink.</p>
+    <div class="row"><button class="btn primary" type="submit">Konto anlegen</button><button class="btn" type="button" data-go="login">Zurück</button></div>
+  </form>
+
+  <form data-v="forgot" novalidate>
+    <label for="fgMail">E-Mail</label>
+    <input type="email" id="fgMail" autocomplete="username" placeholder="name@beispiel.de" maxlength="190">
+    <div class="row"><button class="btn primary" type="submit">Link senden</button><button class="btn" type="button" data-go="login">Zurück</button></div>
+  </form>
+
+  <form data-v="newpw" novalidate>
+    <label for="npPw">Neues Passwort</label>
+    <input type="password" id="npPw" autocomplete="new-password" placeholder="Mindestens 10 Zeichen" maxlength="200">
+    <label for="npPw2">Wiederholen</label>
+    <input type="password" id="npPw2" autocomplete="new-password" placeholder="Noch einmal" maxlength="200">
+    <div class="row"><button class="btn primary" type="submit">Speichern</button></div>
+  </form>
+
+  <div data-v="account">
+    <p class="accmail" id="acMail"></p>
+    <p class="accstate" id="acState"></p>
+    <div class="row"><button class="btn primary" type="button" id="acSync" title="Karten, Lernstand und Optionen mit dem Konto abgleichen">Jetzt abgleichen</button></div>
+    <div class="accsec">
+      <div class="row"><button class="btn" type="button" id="acOut">Abmelden</button><button class="btn" type="button" data-go="chpw">Passwort ändern</button></div>
+      <label class="accwipe"><input type="checkbox" id="acWipe"> Beim Abmelden Karten von diesem Gerät entfernen</label>
+    </div>
+    <div class="accsec accdanger">
+      <p class="acchint">Konto und Serverdaten löschen. Nicht rückgängig, danach folgt eine Passwort-Abfrage.</p>
+      <div class="row"><button class="btn danger" type="button" data-go="del">Konto löschen …</button></div>
+    </div>
+  </div>
+
+  <form data-v="chpw" novalidate>
+    <label for="cpOld">Altes Passwort</label>
+    <input type="password" id="cpOld" autocomplete="current-password" placeholder="Dein jetziges Passwort" maxlength="200">
+    <label for="cpNew">Neues Passwort</label>
+    <input type="password" id="cpNew" autocomplete="new-password" placeholder="Mindestens 10 Zeichen" maxlength="200">
+    <div class="row"><button class="btn primary" type="submit">Ändern</button><button class="btn" type="button" data-go="account">Zurück</button></div>
+  </form>
+
+  <form data-v="del" novalidate>
+    <p class="acchint"><b>Das löscht dein Konto und alle Daten dort.</b> Karten auf diesem Gerät bleiben.</p>
+    <label for="dlPw">Passwort</label>
+    <input type="password" id="dlPw" autocomplete="current-password" placeholder="Zur Bestätigung" maxlength="200">
+    <div class="row"><button class="btn danger" type="submit">Endgültig löschen</button><button class="btn" type="button" data-go="account">Abbrechen</button></div>
+  </form>
+
+  <div data-v="msg"><div class="row"><button class="btn primary" type="button" data-go="login">Zur Anmeldung</button></div></div>
+  <div class="row accclose"><button class="btn" type="button" data-close>Schließen</button></div>
+</dialog>
+
+<dialog id="syncDlg" aria-labelledby="syTitle">
+  <h2 id="syTitle">Welcher Stand gilt?</h2>
+  <p id="syText"></p>
+  <div class="row">
+    <button class="btn primary" type="button" id="syServer">Konto-Stand laden</button>
+    <button class="btn" type="button" id="syLocal">Diesen Stand hochladen</button>
+    <button class="btn" type="button" id="syLater">Später</button>
+  </div>
+</dialog>
+
+<dialog id="ctDlg" aria-labelledby="ctTitle">
+  <h2 id="ctTitle">Kontakt</h2>
+  <form id="ctForm" novalidate>
+    <label for="ctName">Name</label>
+    <input type="text" id="ctName" autocomplete="name" placeholder="Dein Name" maxlength="80">
+    <label for="ctMail">E-Mail</label>
+    <input type="email" id="ctMail" autocomplete="email" placeholder="Für die Antwort" maxlength="190">
+    <label for="ctMsg">Nachricht</label>
+    <textarea id="ctMsg" placeholder="Was möchtest du uns sagen?" maxlength="2000"></textarea>
+    <input type="text" id="ctHp" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" placeholder="Nicht ausfüllen">
+    <p class="err" id="ctErr" role="alert"></p>
+    <p class="acchint">Die Angaben gehen nur an uns und dienen der Antwort. Mehr dazu in der <button class="flink" type="button" data-ds>Datenschutzerklärung</button>.</p>
+    <div class="row"><button class="btn primary" type="submit" id="ctSend">Senden</button><button class="btn" type="button" data-close>Abbrechen</button></div>
+  </form>
+</dialog>
+
+<dialog id="impDlg" class="legal" aria-labelledby="impTitle">
+  <h2 id="impTitle">Impressum</h2>
+  <p class="lsub">Angaben nach § 5 DDG</p>
+  <p><span class="lf" data-a="name"></span><br><span class="lf" data-a="strasse"></span><br><span class="lf" data-a="ort"></span></p>
+  <h3>Kontakt</h3>
+  <p>E-Mail: <span class="lf" data-a="email"></span></p>
+  <div class="row"><button class="btn primary" type="button" data-close>Schließen</button></div>
+</dialog>
+
+<dialog id="dsDlg" class="legal" aria-labelledby="dsTitle">
+  <h2 id="dsTitle">Datenschutz</h2>
+  <p class="lsub">Stand: 09.11.2026</p>
+  <h3>Verantwortlich</h3>
+  <p><span class="lf" data-a="name"></span>, <span class="lf" data-a="strasse"></span>, <span class="lf" data-a="ort"></span><br>E-Mail: <span class="lf" data-a="email"></span></p>
+  <h3>Deine Karten</h3>
+  <p>Karten, Einstellungen und Lernstand liegen im Website-Speicher deines Browsers. Sie werden nicht an uns gesendet. Der Speicher ist nötig, damit die App deine Karten behalten kann. Zum Löschen leerst du die Website-Daten im Browser.</p>
+  <h3>Aufruf der Seite</h3>
+  <p>Beim Aufruf verarbeitet der Hoster <span class="lf" data-a="hoster"></span> technisch nötige Daten (IP-Adresse, Zeit, abgerufene Datei) in Server-Logs, um die Seite auszuliefern und sicher zu betreiben. Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO.</p>
+  <h3>Updates über GitHub</h3>
+  <p>Die App fragt online höchstens einmal am Tag bei GitHub (GitHub Inc., USA) nach einer neuen Version. GitHub sieht dabei deine IP-Adresse und die Uhrzeit. Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO, unser Interesse an aktuellen Versionen. Unter Optionen, Version, lässt sich die Suche abschalten.</p>
+  <h3>Was es nicht gibt</h3>
+  <p>Kein Tracking, keine Werbung, keine nachgeladenen Schriften oder Skripte. Ohne Konto setzt die Seite keine Cookies.</p>
+  <h3 id="dsNoK">Konto</h3>
+  <p id="dsNoK2">Derzeit gibt es keine Konten. Kommen sie, wird dieser Text vorher ergänzt.</p>
+  <div id="dsKonto" hidden>
+    <h3>Konto</h3>
+    <p>Beim Registrieren speichern wir deine E-Mail-Adresse und dein Passwort als Hash (Argon2). Mit Konto liegen deine Karten, Optionen und dein Lernstand auch auf dem Server von <span class="lf" data-a="hoster"></span>. Zweck: das Konto und den Abgleich bereitstellen (Art. 6 Abs. 1 lit. b DSGVO). Die Daten bleiben, bis du dein Konto löschst. Das geht in der App unter „Konto“.</p>
+    <p>Nach der Anmeldung setzt der Server ein Sitzungs-Cookie. Es ist für die Anmeldung nötig und enthält nur eine Zufallskennung.</p>
+    <p>Wir senden dir Mails zur Bestätigung und zum Zurücksetzen des Passworts. Nicht bestätigte Konten werden nach 48 Stunden gelöscht.</p>
+    <p>Gegen Missbrauch speichert der Server höchstens 24 Stunden einen nicht umkehrbaren Hash deiner IP-Adresse (beim Kontaktformular auch deiner E-Mail-Adresse und der Nachricht) und zählt damit Versuche (Art. 6 Abs. 1 lit. f DSGVO).</p>
+    <h3>Kontaktformular</h3>
+    <p>Name, E-Mail und Nachricht gehen per Mail an uns und dienen nur der Antwort. Wir löschen sie, wenn die Anfrage erledigt ist.</p>
+  </div>
+  <h3>Deine Rechte</h3>
+  <p>Du kannst Auskunft, Berichtigung, Löschung, Einschränkung und Datenübertragbarkeit verlangen und der Verarbeitung widersprechen. Schreib dazu eine E-Mail an die Adresse oben. Du kannst dich außerdem bei einer Datenschutz-Aufsichtsbehörde beschweren.</p>
+  <div class="row"><button class="btn primary" type="button" data-close>Schließen</button></div>
 </dialog>
 
 <div class="toast" id="toast" role="status"></div>

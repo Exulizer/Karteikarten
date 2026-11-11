@@ -111,9 +111,13 @@
     karte: { breite: 420, zeilenMin: 5, zeilenMax: 12, automatischeHoehe: true },
     faecher: { anzahl: 5, groesse: 0.55, winkel: 10, unschaerfe: 7 },
     animation: { an: true, tempo: 1 },
-    lernen: { mischen: false, tastatur: true, timer: true, sekunden: 30, tagesziel: 10, richtung: 'vor', tippen: false, vorlesen: 'aus', sprache: 'de-DE', pruefung: 10, auto: 6, player: false },
+    lernen: { mischen: false, tastatur: true, timer: true, sekunden: 30, tagesziel: 10, richtung: 'vor', tippen: false, wortbank: true, vorlesen: 'aus', sprache: 'de-DE', pruefung: 10, auto: 6, player: false },
     design: { thema: 'auto' },
-    update: { pruefen: true }
+    update: { pruefen: true },
+    start: { seite: 'immer' },
+    anbieter: { name: '', strasse: '', ort: '', email: '', hoster: '' },
+    seite: { url: '' },
+    konto: { api: '', test: false }
   };
   var FONTS = {
     serif: 'Georgia, "Iowan Old Style", "Palatino Linotype", serif',
@@ -155,11 +159,17 @@
     s.lernen.tagesziel = Math.round(num(s.lernen.tagesziel, 0, 200, 10));
     if (['vor', 'rueck', 'misch'].indexOf(s.lernen.richtung) < 0) s.lernen.richtung = 'vor';
     s.lernen.tippen = s.lernen.tippen === true;
+    s.lernen.wortbank = s.lernen.wortbank !== false;
     if (['aus', 'frage', 'loesung', 'beides'].indexOf(s.lernen.vorlesen) < 0) s.lernen.vorlesen = 'aus';
     if (!/^[a-z]{2,3}-[A-Z]{2}$/.test(s.lernen.sprache)) s.lernen.sprache = 'de-DE';
     s.lernen.pruefung = Math.round(num(s.lernen.pruefung, 3, 100, 10));
     if (['auto', 'hell', 'dunkel'].indexOf(s.design.thema) < 0) s.design.thema = 'auto';
     s.update.pruefen = s.update.pruefen !== false;
+    if (['immer', 'taeglich', 'einmal', 'aus'].indexOf(s.start.seite) < 0) s.start.seite = 'immer';
+    s.konto.test = s.konto.test === true;
+    s.konto.api = /^[\w.\/-]{0,100}$/.test(String(s.konto.api || '')) ? String(s.konto.api || '') : '';
+    s.seite.url = String(s.seite.url || '').trim().replace(/\/+$/, '').slice(0, 120);
+    Object.keys(s.anbieter).forEach(function (k) { s.anbieter[k] = String(s.anbieter[k] || '').trim().slice(0, 120); });
     return s;
   }
   var FILECFG = normalize(merge(DEFAULTS, window.KARTENBOX_EINSTELLUNGEN));
@@ -305,16 +315,17 @@
     });
   }
   function scheduleWrite() {
+    scheduleSync();
     if (!FL.handle || FL.state !== 'ok') return;
     clearTimeout(FL.timer);
     FL.timer = setTimeout(writeFile, 350);
   }
   /* karteikarten.js: dieselben Karten als Skript, das die Seite neben der HTML von selbst lädt (auch ohne Ordnerzugriff) */
   function cardsJs(data) {
-    return '/* Kartenbox – Karten. Liegt neben karteikarten.html und wird beim Start geladen, wenn der Browser noch keine Karten hat. */\nwindow.KARTENBOX_KARTEN = ' + JSON.stringify(data, null, 2) + ';\n';
+    return '/* KarteiDeck – Karten. Liegt neben karteikarten.html und wird beim Start geladen, wenn der Browser noch keine Karten hat. */\nwindow.KARTENBOX_KARTEN = ' + JSON.stringify(data, null, 2) + ';\n';
   }
   function cfgText() {
-    return '/* Kartenbox – Einstellungen. Wird automatisch gespeichert. Werte lassen sich hier oder im Tab Optionen ändern. */\nwindow.KARTENBOX_EINSTELLUNGEN = ' + JSON.stringify(CFG, null, 2) + ';\n';
+    return '/* KarteiDeck – Einstellungen. Wird automatisch gespeichert. Werte lassen sich hier oder im Tab Optionen ändern. */\nwindow.KARTENBOX_EINSTELLUNGEN = ' + JSON.stringify(CFG, null, 2) + ';\n';
   }
   async function putFile(dir, name, text) {
     var fh = await dir.getFileHandle(name, { create: true });
@@ -351,8 +362,41 @@
   async function readCfg(dir) {
     var t = await readText(dir, F_CFG);
     if (!t) return null;
-    // Dieselbe Datei läuft beim Laden der Seite ohnehin als Skript; hier wird sie nur ausgewertet
-    try { return new Function('var window = {};\n' + t + '\nreturn window.KARTENBOX_EINSTELLUNGEN;')() || null; } catch (e) { return null; }
+    return parseCfgJs(t);
+  }
+  /* Liest einstellungen.js als reine Daten, ohne etwas auszuführen: Kommentare, Schlüssel ohne Anführungszeichen,
+     einfache Anführungszeichen und Komma am Ende sind erlaubt, alles andere (Funktionen, Aufrufe) wird abgelehnt. */
+  function parseCfgJs(t) {
+    var m = /KARTENBOX_EINSTELLUNGEN\s*=\s*/.exec(t);
+    if (!m) return null;
+    var s = t.slice(m.index + m[0].length), out = '', i = 0, n = s.length, depth = 0, started = false;
+    while (i < n) {
+      var c = s[i];
+      if (c === '/' && s[i + 1] === '/') { while (i < n && s[i] !== '\n') i++; continue; }
+      if (c === '/' && s[i + 1] === '*') { var e = s.indexOf('*/', i + 2); if (e < 0) return null; i = e + 2; continue; }
+      if (c === '"' || c === "'") {
+        var q = c, str = ''; i++;
+        while (i < n && s[i] !== q) { if (s[i] === '\\') { str += s[i] + (s[i + 1] || ''); i += 2; } else { str += s[i++]; } }
+        if (i >= n) return null;
+        i++;
+        out += q === '"' ? '"' + str + '"' : '"' + str.replace(/\\'/g, "'").replace(/"/g, '\\"') + '"';
+        continue;
+      }
+      if (/[A-Za-z_$]/.test(c)) {
+        var w = /^[A-Za-z_$][\w$]*/.exec(s.slice(i))[0];
+        i += w.length;
+        var k = i; while (k < n && /\s/.test(s[k])) k++;
+        if (s[k] === ':') out += '"' + w + '"'; else if (w === 'true' || w === 'false' || w === 'null') out += w; else return null;
+        continue;
+      }
+      if (c === '{' || c === '[') { depth++; started = true; }
+      if (c === '}' || c === ']') depth--;
+      out += c; i++;
+      if (started && depth === 0) break;
+    }
+    if (!started || depth !== 0) return null;
+    out = out.replace(/,(\s*[}\]])/g, '$1');
+    try { var o = JSON.parse(out); return o && typeof o === 'object' && !Array.isArray(o) ? o : null; } catch (e) { return null; }
   }
   function takeCfg(o) {
     CFG = normalize(merge(DEFAULTS, o));
@@ -703,14 +747,16 @@
     return linesVal;
   }
   /* Größen der Karte aus den Einstellungen: Zeilenhöhe folgt der Schrift, die Karte der Zeilenzahl */
+  /* Sehr große Bildschirme: alles wächst in Stufen mit (gleiche Schwellen wie --k in kartenbox.css). Die Einstellungen selbst bleiben unverändert. */
+  var SK = window.innerWidth >= 3400 ? 1.75 : window.innerWidth >= 2800 ? 1.5 : window.innerWidth >= 2200 ? 1.25 : 1;
   function geom(W, list, maxL) {
     var T = CFG.schrift;
-    var fs = T.groesse, lh = Math.round(fs * T.zeilenabstand);
+    var fs = Math.round(T.groesse * SK), lh = Math.round(fs * T.zeilenabstand);
     var g = {
       fs: fs, lh: lh,
       hd: Math.max(30, Math.round(lh * 1.3)),
       padx: Math.round(fs * 0.9),
-      bw: Math.min(CFG.karte.breite, Math.max(200, W - 8))
+      bw: Math.min(Math.round(CFG.karte.breite * SK), Math.max(200, W - 8))
     };
     g.L = computeLines(g, list);
     // Höhe deckeln: höchstens ca. 45 % des Fensters, längerer Text scrollt in der Karte
@@ -785,7 +831,18 @@
   function fanT(s, d) { return 'translate(' + s.dx + 'px,' + (d.fanCy + s.dy - d.bigCy) + 'px) rotate(' + s.a + 'deg) scale(' + d.f + ')'; }
   function stackT(d, rot) { return 'translate(' + (d.sx - d.W / 2) + 'px,' + (d.sy - d.bigCy) + 'px) rotate(' + rot + 'deg) scale(' + d.ss + ')'; }
 
-  function face(kind, label, text, img) {
+  /* Lösung einer Lückenkarte: ganzer Satz, die gesuchten Wörter hervorgehoben */
+  function clozeRender(node, c) {
+    var re = /\{\{(.+?)\}\}/g, q = c.q, last = 0, m;
+    while ((m = re.exec(q))) {
+      node.appendChild(document.createTextNode(q.slice(last, m.index)));
+      node.appendChild(el('mark', 'gap', m[1]));
+      last = m.index + m[0].length;
+    }
+    node.appendChild(document.createTextNode(q.slice(last)));
+    if (c.a && c.a !== clozeWords(q).join(', ')) node.appendChild(document.createTextNode('\n\n' + c.a));
+  }
+  function face(kind, label, text, img, card) {
     var f = el('div', 'face paper ' + kind);
     f.appendChild(el('span', 'tag', label));
     if (kind === 'front') {
@@ -800,6 +857,7 @@
       f.appendChild(g);
     }
     var sh = el('div', 'txt sharp', text);
+    if (card && kind === 'back' && hasCloze(card.q) && text === aShow(card)) { sh.textContent = ''; clozeRender(sh, card); }
     if (img) { var im = el('img', 'cimg'); im.src = img; im.alt = ''; im.draggable = false; sh.insertBefore(im, sh.firstChild); }
     f.appendChild(sh);
     return f;
@@ -813,7 +871,7 @@
     var fl = el('div', 'flip');
     var rv = !!S.rev[c.id];   // rückwärts: erst die Lösung, dann die Frage. Das Bild gehört immer zur Frage.
     fl.appendChild(face('front', rv ? 'Lösung' : 'Frage', rv ? aShow(c) : qShow(c), rv ? '' : c.img));
-    fl.appendChild(face('back', rv ? 'Frage' : 'Lösung', rv ? qShow(c) : aShow(c), rv ? c.img : ''));
+    fl.appendChild(face('back', rv ? 'Frage' : 'Lösung', rv ? qShow(c) : aShow(c), rv ? c.img : '', c));
     e.appendChild(el('div', 'glow'));
     e.appendChild(fl);
     e.appendChild(el('div', 'mark'));
@@ -964,170 +1022,62 @@
     var sb = el('button', 'btn statbtn', 'Serie ' + st + (st === 1 ? ' Tag' : ' Tage') + ' · Statistik'); sb.type = 'button'; sb.addEventListener('click', function () { openStats(); });
     bar.appendChild(sb);
   }
-  /* Statistik: nur Tage, an denen gelernt wurde. Antippen zeigt, welche Karten es waren. */
-  var DAYN = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
-  function dayLabel(k) {
-    var p = k.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]), y = new Date(); y.setDate(y.getDate() - 1);
-    return (k === dayKey() ? 'Heute' : k === dayKey(y) ? 'Gestern' : DAYN[d.getDay()]) + ', ' + d.getDate() + '.' + (d.getMonth() + 1) + '.';
-  }
-  function cardOf(id) { return ST.cards.filter(function (c) { return c.id === id; })[0] || null; }
-  function dayGroups(L) {   // [{cat, color, items:[{card, ok, bad}]}]
-    var byCat = {}, order = [];
-    (L.c || []).forEach(function (e) {
-      var c = cardOf(e[0]), cat = c ? c.cat : null, g = byCat[cat];
-      if (!g) { g = byCat[cat] = { cat: cat, color: cat ? catColor(cat) : '#8b94a3', items: {}, list: [], n: 0 }; order.push(cat); }
-      var it = g.items[e[0]];
-      if (!it) { it = g.items[e[0]] = { card: c, ok: 0, bad: 0 }; g.list.push(it); }
-      if (e[1]) it.ok++; else it.bad++;
-      g.n++;
-    });
-    return order.map(function (k) { return byCat[k]; });
-  }
-  /* Demo-Statistik: Beispieldaten, nichts davon landet in deinen Daten. Nach 2 Minuten schließt sie sich von selbst, gelernt wird unabhängig davon normal gezählt. */
-  var ST = { log: {}, cards: [] }, STD = { iv: 0, end: 0 }, DEMOST = null;
-  function demoStat() {
-    if (DEMOST) return DEMOST;
-    var seed = 7, rnd = function () { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }, base = demoCards(), log = {}, i, k;
-    for (i = 0; i < 32; i++) {
-      if (i % 4 === 3 || i === 5) continue;
-      var d = new Date(); d.setDate(d.getDate() - i);
-      var n = 6 + Math.floor(rnd() * 11), c = [];
-      for (k = 0; k < n; k++) c.push([base[Math.floor(rnd() * base.length)].id, rnd() < 0.42 + 0.017 * (32 - i) ? 1 : 0]);
-      log[dayKey(d)] = { n: n, ok: c.reduce(function (a, e) { return a + e[1]; }, 0), c: c };
-    }
-    DEMOST = { log: log, cards: base.map(function (c, n) { return { id: c.id, q: c.q, a: c.a, cat: c.cat, n: 1, box: 1 + (n * 3) % 5, miss: n % 4 === 0 ? 2 + n % 2 : 0 }; }) };
-    return DEMOST;
-  }
-  function statDemoStop() { clearInterval(STD.iv); STD.iv = 0; }
-  function openStats(demo) {
-    demo = demo === true;
-    statDemoStop();
-    ST = demo ? demoStat() : { log: db.log, cards: db.cards };
-    var b = $('statBody'); b.textContent = '';
-    if (demo) {
-      var bn = el('p', 'stdemo'), cnt = el('b', null, '2:00'), eb = el('button', 'btn', 'Beenden'); eb.type = 'button';
-      bn.appendChild(document.createTextNode('Demo mit Beispieldaten. Schließt in ')); bn.appendChild(cnt); bn.appendChild(document.createTextNode(' ')); bn.appendChild(eb);
-      eb.addEventListener('click', function () { $('statDlg').close(); });
-      b.appendChild(bn);
-      STD.end = Date.now() + 120000;
-      var tick = function () {
-        var l = Math.max(0, Math.round((STD.end - Date.now()) / 1000));
-        cnt.textContent = Math.floor(l / 60) + ':' + ('0' + l % 60).slice(-2);
-        if (l <= 0) { statDemoStop(); $('statDlg').close(); toast('Demo-Statistik beendet'); }
-      };
-      STD.iv = setInterval(tick, 500);
-    }
-    var goal = CFG.lernen.tagesziel, keys = Object.keys(ST.log).sort(), i;
-    var all = keys.map(function (k) { return ST.log[k]; });
-    var total = all.reduce(function (a, l) { return a + l.n; }, 0), okAll = all.reduce(function (a, l) { return a + l.ok; }, 0), best = all.reduce(function (a, l) { return Math.max(a, l.n); }, 0);
-    var sum = el('dl', 'stsum');
-    [['Serie', streak(ST.log) + (streak(ST.log) === 1 ? ' Tag' : ' Tage'), 1], ['Gelernt gesamt', String(total), 4], ['Davon gewusst', total ? Math.round(okAll / total * 100) + ' %' : '–', 2], ['Bester Tag', String(best), 5]].forEach(function (p) {
-      var w = el('div'); w.style.borderTopColor = PALETTE[p[2]]; w.appendChild(el('dt', null, p[0])); w.appendChild(el('dd', null, p[1])); sum.appendChild(w);
-    });
-    b.appendChild(sum);
-    if (!keys.length) {
-      b.appendChild(el('p', 'hint', 'Noch nichts gelernt. Sobald du Karten mit Gewusst oder Nochmal bewertest, erscheint hier jeder Lerntag.'));
-      var db2 = el('button', 'btn primary', 'Demo ansehen'); db2.type = 'button'; db2.addEventListener('click', function () { openStats(true); }); b.appendChild(db2);
-    } else {
-      var shown = keys.slice(-21), mx = Math.max.apply(null, shown.map(function (k) { return ST.log[k].n; })), sel = shown[shown.length - 1];
-      var detail = el('div', 'stdetail'), btns = {}, dots = {}, usedCats = {};
-      b.appendChild(el('h3', null, 'Lerntage (antippen)'));
-      var row = el('div', 'stdays');
-      shown.forEach(function (k) {
-        var L = ST.log[k], bt = el('button', 'stday'), tr = el('span', 'sttrack'), col = el('span', 'stcol'), p = k.split('-');
-        bt.type = 'button'; bt.title = dayLabel(k) + ': ' + L.n + ' Karten';
-        col.style.height = Math.max(6, L.n / mx * 100) + '%';
-        var gs = dayGroups(L);
-        if (gs.length) gs.forEach(function (g) { var sg = el('i'); sg.style.flex = String(g.n); sg.style.background = g.color; col.appendChild(sg); if (g.cat) usedCats[g.cat] = g.color; });
-        else { var sg = el('i'); sg.style.flex = '1'; sg.style.background = '#8b94a3'; col.appendChild(sg); }
-        tr.appendChild(col); bt.appendChild(tr);
-        bt.appendChild(el('b', null, String(L.n)));
-        bt.appendChild(el('small', null, (+p[2]) + '.' + (+p[1]) + '.'));
-        if (goal && L.n >= goal) bt.appendChild(el('em', null, '✓'));
-        bt.addEventListener('click', function () { pick(k); });
-        btns[k] = bt; row.appendChild(bt);
-      });
-      b.appendChild(row);
-      var cats = Object.keys(usedCats);
-      if (cats.length) {
-        var lg = el('p', 'stleg');
-        cats.forEach(function (c) { var sp = el('span', null, c); sp.style.setProperty('--c', usedCats[c]); lg.appendChild(sp); });
-        b.appendChild(lg);
-      }
-      b.appendChild(el('h3', null, 'Lernkurve (Gewusst pro Lerntag)'));
-      var ns = 'http://www.w3.org/2000/svg', cv = document.createElementNS(ns, 'svg');
-      cv.setAttribute('viewBox', '0 0 280 110'); cv.setAttribute('class', 'stchart stcurve'); cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', 'Anteil gewusster Karten pro Lerntag');
-      [0, 50, 100].forEach(function (pc) {
-        var y = 90 - pc * 0.8, ln = document.createElementNS(ns, 'line'), tx = document.createElementNS(ns, 'text');
-        ln.setAttribute('x1', 26); ln.setAttribute('x2', 278); ln.setAttribute('y1', y); ln.setAttribute('y2', y); ln.setAttribute('class', 'grid');
-        tx.setAttribute('x', 0); tx.setAttribute('y', y + 3); tx.textContent = pc + '%';
-        cv.appendChild(ln); cv.appendChild(tx);
-      });
-      var X = function (k) { return shown.length > 1 ? 32 + k * (240 / (shown.length - 1)) : 150; }, Y = function (q) { return 90 - q * 80; };
-      var qs = shown.map(function (k) { var L = ST.log[k]; return L.ok / L.n; });
-      if (shown.length > 1) {
-        var pl = document.createElementNS(ns, 'polyline');
-        pl.setAttribute('points', qs.map(function (q, k) { return X(k).toFixed(1) + ',' + Y(q).toFixed(1); }).join(' ')); pl.setAttribute('class', 'curve');
-        cv.appendChild(pl);
-      }
-      shown.forEach(function (k, n) {
-        var c = document.createElementNS(ns, 'circle'); c.setAttribute('cx', X(n)); c.setAttribute('cy', Y(qs[n])); c.setAttribute('r', 4.5); c.setAttribute('class', 'dotc');
-        c.setAttribute('tabindex', '0'); c.setAttribute('role', 'button'); c.setAttribute('aria-label', dayLabel(k) + ': ' + Math.round(qs[n] * 100) + ' Prozent gewusst');
-        var t = document.createElementNS(ns, 'title'); t.textContent = dayLabel(k) + ': ' + Math.round(qs[n] * 100) + ' % von ' + ST.log[k].n; c.appendChild(t);
-        c.addEventListener('click', function () { pick(k); });
-        c.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(k); } });
-        dots[k] = c; cv.appendChild(c);
-      });
-      b.appendChild(cv);
-      b.appendChild(detail);
-      var pick = function (k) {
-        sel = k;
-        shown.forEach(function (x) { btns[x].setAttribute('aria-pressed', String(x === k)); dots[x].classList.toggle('sel', x === k); });
-        detail.textContent = '';
-        var L = ST.log[k], pc = L.n ? Math.round(L.ok / L.n * 100) : 0, hd = el('h3', null, dayLabel(k));
-        detail.appendChild(hd);
-        detail.appendChild(el('p', 'stline', L.n + (L.n === 1 ? ' Karte' : ' Karten') + ' · ' + L.ok + ' gewusst (' + pc + ' %)' + (goal && L.n >= goal ? ' · Tagesziel erreicht' : '')));
-        var gs = dayGroups(L);
-        if (!gs.length) { detail.appendChild(el('p', 'hint', 'Für diesen Tag sind nur die Zahlen gespeichert, nicht die einzelnen Karten.')); return; }
-        gs.forEach(function (g) {
-          var sec = el('section', 'stgrp'), h = el('h4', null, g.cat || 'Gelöschte Karten'), ul = el('ul');
-          sec.style.setProperty('--c', g.color); sec.appendChild(h);
-          g.list.forEach(function (it) {
-            var li = el('li'), q = it.card ? (qShow(it.card) || '') : 'Karte wurde gelöscht';
-            li.appendChild(el('span', 'q', q.length > 90 ? q.slice(0, 90) + '…' : q));
-            var m = el('b', it.bad ? 'bad' : 'ok', (it.bad ? '✗' : '✓') + (it.ok + it.bad > 1 ? ' ×' + (it.ok + it.bad) : ''));
-            m.title = it.bad ? 'Nochmal' : 'Gewusst'; li.appendChild(m); ul.appendChild(li);
-          });
-          sec.appendChild(ul); detail.appendChild(sec);
-        });
-      };
-      pick(sel);
-    }
-    var cards = ST.cards, bw = el('div', 'stbox'), boxes = [], BCOL = ['#e5484d', '#f08a24', '#e0b020', '#6fb35a', '#3fa66b'];
-    for (i = 1; i <= 5; i++) boxes.push(cards.filter(function (c) { return c.n && c.box === i; }).length);
-    var bmax = Math.max(1, Math.max.apply(null, boxes));
-    if (boxes.some(Boolean)) {
-      b.appendChild(el('h3', null, 'Karteikasten'));
-      boxes.forEach(function (n, k) {
-        if (!n) return;
-        var r = el('div', 'br'); r.appendChild(el('span', null, 'Kasten ' + (k + 1)));
-        var bar = el('div', 'bb'), f = el('i'); f.style.width = (n / bmax * 100) + '%'; f.style.background = BCOL[k]; bar.appendChild(f); r.appendChild(bar); r.appendChild(el('b', null, String(n))); bw.appendChild(r);
-      });
-      b.appendChild(bw);
-    }
-    var hard = cards.filter(function (c) { return c.miss >= 2; }).sort(function (x, y) { return y.miss - x.miss; }).slice(0, 5);
-    if (hard.length) {
-      b.appendChild(el('h3', null, 'Schwerste Karten'));
-      var ul = el('ul', 'sthard');
-      hard.forEach(function (c) { var li = el('li'); li.appendChild(el('b', null, '×' + c.miss)); li.appendChild(el('span', null, c.q.length > 70 ? c.q.slice(0, 70) + '…' : c.q)); ul.appendChild(li); });
-      b.appendChild(ul);
-    }
-    $('statDlg').showModal();
-    $('statDlg').scrollTop = 0;
-    var dr = b.querySelector('.stdays'); if (dr) dr.scrollLeft = dr.scrollWidth;
-  }
-  $('statClose').addEventListener('click', function () { $('statDlg').close(); });
-  $('statDlg').addEventListener('close', statDemoStop);
+  /* Zusatzfunktionen (Statistik, Tippen, Vorlesen, Kassettenplayer, Prüfung, Richtung): Der Code liegt nicht in dieser Datei, er kommt nach der Anmeldung vom Server (api/inc/pro.js). Ohne ihn tun die Platzhalter nichts. */
+  var PRO = {}, PRO_EMBED = null /*PRO_EMBED*/;
+  function proNeed() { toast('Das gibt es mit Konto'); if (typeof openAcc === 'function') openAcc('login'); }
+  function openStats(d) { if (PRO.openStats) PRO.openStats(d); else proNeed(); }
+  function typeState() { if (PRO.typeState) PRO.typeState(); else { $('typeRow').hidden = true; $('bankRow').hidden = true; } }
+  function speakCard(b) { if (PRO.speakCard) PRO.speakCard(b); }
+  function syncPlayer() { if (PRO.syncPlayer) PRO.syncPlayer(); else $('player').hidden = true; }
+  function autoStop() { if (PRO.autoStop) PRO.autoStop(); }
+  function startExam() { if (PRO.startExam) PRO.startExam(); else proNeed(); }
+  var AUTO = { on: false, rand: false, t: 0, keep: false, iv: 0, end: 0, ph: '' };
+  window.__kbx = (function () {
+    var X = Object.create(null);
+    function d(n, g, s) { Object.defineProperty(X, n, { get: g, set: s, configurable: true }); }
+    d('AUTO', function () { return AUTO; }, function (v) { AUTO = v; });
+    d('CFG', function () { return CFG; }, function (v) { CFG = v; });
+    d('PALETTE', function () { return PALETTE; }, function (v) { PALETTE = v; });
+    d('REF', function () { return REF; }, function (v) { REF = v; });
+    d('S', function () { return S; }, function (v) { S = v; });
+    d('aShow', function () { return aShow; }, function (v) { aShow = v; });
+    d('autoStop', function () { return autoStop; }, function (v) { autoStop = v; });
+    d('byId', function () { return byId; }, function (v) { byId = v; });
+    d('catColor', function () { return catColor; }, function (v) { catColor = v; });
+    d('catList', function () { return catList; }, function (v) { catList = v; });
+    d('clozeWords', function () { return clozeWords; }, function (v) { clozeWords = v; });
+    d('current', function () { return current; }, function (v) { current = v; });
+    d('dayKey', function () { return dayKey; }, function (v) { dayKey = v; });
+    d('db', function () { return db; }, function (v) { db = v; });
+    d('demoCards', function () { return demoCards; }, function (v) { demoCards = v; });
+    d('deselect', function () { return deselect; }, function (v) { deselect = v; });
+    d('el', function () { return el; }, function (v) { el = v; });
+    d('fill', function () { return fill; }, function (v) { fill = v; });
+    d('flip', function () { return flip; }, function (v) { flip = v; });
+    d('grade', function () { return grade; }, function (v) { grade = v; });
+    d('hasCloze', function () { return hasCloze; }, function (v) { hasCloze = v; });
+    d('next', function () { return next; }, function (v) { next = v; });
+    d('norm', function () { return norm; }, function (v) { norm = v; });
+    d('openStats', function () { return openStats; }, function (v) { openStats = v; });
+    d('qShow', function () { return qShow; }, function (v) { qShow = v; });
+    d('rebuildStudy', function () { return rebuildStudy; }, function (v) { rebuildStudy = v; });
+    d('renderOptions', function () { return renderOptions; }, function (v) { renderOptions = v; });
+    d('seg', function () { return seg; }, function (v) { seg = v; });
+    d('select', function () { return select; }, function (v) { select = v; });
+    d('show', function () { return show; }, function (v) { show = v; });
+    d('speakCard', function () { return speakCard; }, function (v) { speakCard = v; });
+    d('stage', function () { return stage; }, function (v) { stage = v; });
+    d('startExam', function () { return startExam; }, function (v) { startExam = v; });
+    d('stepper', function () { return stepper; }, function (v) { stepper = v; });
+    d('stopTimer', function () { return stopTimer; }, function (v) { stopTimer = v; });
+    d('streak', function () { return streak; }, function (v) { streak = v; });
+    d('syncPlayer', function () { return syncPlayer; }, function (v) { syncPlayer = v; });
+    d('toast', function () { return toast; }, function (v) { toast = v; });
+    d('typeState', function () { return typeState; }, function (v) { typeState = v; });
+    d('$', function () { return $; }, function (v) { $ = v; });
+    d('PRO', function () { return PRO; });
+    return X;
+  })();
   function isPinned(c) { return !!c.pin; }
   function renderModes() {
     var base = baseList();
@@ -1163,7 +1113,7 @@
       S.exam = { ok: 0, bad: 0, t0: Date.now() };
     } else S.exam = null;
     S.examNext = false;
-    var dr = CFG.lernen.richtung;
+    var dr = PRO.direction ? PRO.direction() : 'vor';
     S.rev = {};
     S.list.forEach(function (c) { S.rev[c.id] = !hasCloze(c.q) && (dr === 'rueck' || (dr === 'misch' && Math.random() < 0.5)); });
     S.total = S.list.length; S.done = 0; S.sel = null; S.round = { ok: 0, bad: 0 }; S.marks = {}; S.shelf = [];
@@ -1287,55 +1237,6 @@
     if (CFG.lernen.tippen && !(window.matchMedia && matchMedia('(pointer: coarse)').matches)) $('typeIn').focus();
     speakCard(false);
   }
-  /* Tippen: Antwort eintragen, die Karte dreht sich und zeigt, ob es gestimmt hat */
-  function typeState() {
-    var row = $('typeRow'), on = CFG.lernen.tippen && !stage.hidden && S.list.length > 0;
-    row.hidden = !on;
-    if (!on) return;
-    var e = S.sel && S.els[S.sel], can = !!(e && !e._flipped);
-    $('typeIn').disabled = !can; $('typeBtn').disabled = !can;
-  }
-  function typeCheck() {
-    var e = S.sel && S.els[S.sel];
-    if (!e || e._flipped) return;
-    var c = byId(S.sel), want = hasCloze(c.q) ? clozeWords(c.q).join(' ') : (S.rev[c.id] ? c.q : c.a);
-    var g = grade($('typeIn').value, want), r = $('typeRes');
-    r.textContent = g === 2 ? 'Richtig' : g === 1 ? 'Fast richtig' : 'Nicht ganz';
-    r.className = 'g' + g;
-    stopTimer(); flip();
-  }
-  $('typeBtn').addEventListener('click', typeCheck);
-  $('typeIn').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); typeCheck(); } });
-  /* Vorlesen mit der Stimme des Geräts (offline). Vorderseite beim Wählen, Rückseite beim Drehen. */
-  function speakCard(back) {
-    var m = CFG.lernen.vorlesen;
-    if (m === 'aus' || !window.speechSynthesis || !S.sel) return;
-    if (back ? m === 'frage' : m === 'loesung') return;
-    var c = byId(S.sel); if (!c) return;
-    var rv = !!S.rev[c.id], front = rv ? aShow(c) : qShow(c), txt = back ? (rv ? qShow(c) : aShow(c)) : front;
-    try {
-      speechSynthesis.cancel();
-      say(txt.replace(/\[ … \]/g, 'Lücke'), true);
-    } catch (err) {}
-  }
-  var LANGN = { 'de-DE': 'Deutsch', 'en-GB': 'Englisch', 'fr-FR': 'Französisch', 'es-ES': 'Spanisch', 'it-IT': 'Italienisch' };
-  var LANGT = { 'de-DE': 'Hallo, das ist ein Test.', 'en-GB': 'Hello, this is a test.', 'fr-FR': 'Bonjour, ceci est un test.', 'es-ES': 'Hola, esto es una prueba.', 'it-IT': 'Ciao, questo è un test.' };
-  function voiceFor(lang) {
-    var v = []; try { v = speechSynthesis.getVoices() || []; } catch (e) {}
-    var l = lang.toLowerCase(), pre = l.slice(0, 2);
-    function norm(x) { return String(x.lang).replace('_', '-').toLowerCase(); }
-    return v.filter(function (x) { return norm(x) === l; })[0] || v.filter(function (x) { return norm(x).indexOf(pre) === 0; })[0] || null;
-  }
-  var warnedVoice = false;
-  function say(text, quiet) {
-    var lang = CFG.lernen.sprache, u = new SpeechSynthesisUtterance(text), v = voiceFor(lang), n = 0;
-    try { n = (speechSynthesis.getVoices() || []).length; } catch (e) {}
-    u.lang = lang;
-    if (v) u.voice = v;
-    else if (n && !warnedVoice) { warnedVoice = true; toast('Keine ' + LANGN[lang] + 'e Stimme auf diesem Gerät. Siehe Optionen.'); }
-    speechSynthesis.speak(u);
-  }
-  if (window.speechSynthesis && speechSynthesis.addEventListener) speechSynthesis.addEventListener('voiceschanged', function () { if (current === 'opts') renderOptions(); });
   function deselect() { if (!S.sel) return; try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} stopTimer(); S.sel = null; layout(); updateUI(); }
   function flip() {
     if (!S.sel || TM.id === S.sel) return; // solange der Countdown läuft, dreht nur er die Karte
@@ -1376,53 +1277,6 @@
   }
   /* Weiter ohne Lösung und Nochmal: Die Karte fliegt in die Ablage (links oben), nicht auf den Gewusst-Stapel. Ist die Runde leer, kommt die Ablage von selbst zurück. */
   /* Auto-Modus: Frage zeigen, drehen, weiter. Zählt nicht als Lernen, die Fächer bleiben unverändert. */
-  var AUTO = { on: false, rand: false, t: 0, keep: false, iv: 0, end: 0, ph: '' };
-  function playerOn() { return CFG.lernen.player && window.innerWidth >= 900; }
-  function syncPlayer() { var on = playerOn() && !stage.hidden && !S.exam; $('player').hidden = !on; if (!on) autoStop(); }
-  function autoUI() {
-    $('autoBtn').setAttribute('aria-pressed', String(AUTO.on));
-    $('autoTxt').textContent = AUTO.on ? 'Stopp' : 'Auto';
-    $('player').classList.toggle('on', AUTO.on);
-    $('autoMode').textContent = AUTO.rand ? 'Zufall' : 'Reihe';
-  }
-  function autoStop() {
-    clearTimeout(AUTO.t); clearInterval(AUTO.iv); AUTO.iv = 0;
-    $('autoLcd').textContent = '––';
-    if (!AUTO.on) return;
-    AUTO.on = false; autoUI();
-  }
-  /* Anzeige im Player: Seite und Sekunden, die noch laufen */
-  function autoLcd() { var l = Math.max(0, Math.ceil((AUTO.end - Date.now()) / 1000)); $('autoLcd').textContent = AUTO.ph ? AUTO.ph + ' ' + l : '––'; }
-  function autoPhase(ph, ms) { AUTO.ph = ph; AUTO.end = Date.now() + ms; autoLcd(); if (!AUTO.iv) AUTO.iv = setInterval(autoLcd, 200); }
-  function autoStep() {
-    if (!AUTO.on || current !== 'study') return;
-    if (!S.queue.length) {   // Durchlauf fertig: neu mischen und weiter, bis jemand stoppt
-      AUTO.keep = true; rebuildStudy(); AUTO.keep = false;
-      if (!S.queue.length) { autoStop(); return; }
-    }
-    var id = AUTO.rand ? S.queue[Math.floor(Math.random() * S.queue.length)] : S.queue[0], ms = CFG.lernen.auto * 1000;
-    if (!S.els[id]) { S.queue = [id].concat(S.queue.filter(function (x) { return x !== id; })); fill(0); }   // nur die vorderen Karten haben ein Element, die gewählte holen wir nach vorn
-    if (!S.els[id]) { autoStop(); return; }
-    select(id); stopTimer(); autoPhase('Frage', ms);
-    AUTO.t = setTimeout(function () {
-      if (!AUTO.on) return;
-      flip(); autoPhase('Lösung', ms);
-      AUTO.t = setTimeout(function () {
-        if (!AUTO.on) return;
-        next(); AUTO.ph = ''; autoLcd();
-        AUTO.t = setTimeout(autoStep, Math.round(1100 / CFG.animation.tempo));
-      }, ms);
-    }, ms);
-  }
-  $('autoBtn').addEventListener('click', function () {
-    if (AUTO.on) { autoStop(); return; }
-    if (!S.queue.length) return;
-    AUTO.on = true; autoUI(); deselect(); autoStep();
-  });
-  $('autoMode').addEventListener('click', function () { AUTO.rand = !AUTO.rand; autoUI(); });
-  $('view-study').addEventListener('pointerdown', function (e) { if (AUTO.on && !e.target.closest('#player')) autoStop(); }, true);
-  document.addEventListener('keydown', function (e) { if (AUTO.on && !e.target.closest('#player')) autoStop(); }, true);
-  autoUI();
   function putBack(kind) {
     if (!S.sel) return;
     stopTimer();
@@ -1452,13 +1306,6 @@
     var x = S.exam, n = x.ok + x.bad, p = n ? x.ok / n * 100 : 0, note = p >= 92 ? 1 : p >= 81 ? 2 : p >= 67 ? 3 : p >= 50 ? 4 : p >= 30 ? 5 : 6;
     var sec = Math.round((Date.now() - x.t0) / 1000);
     return 'Prüfung: ' + x.ok + ' von ' + n + ' richtig. Note ' + note + '. Zeit ' + Math.floor(sec / 60) + ':' + ('0' + sec % 60).slice(-2) + '.';
-  }
-  function startExam() {
-    if (S.demo) { toast('Prüfung geht mit deinen eigenen Karten'); return; }
-    if (catList().length < 3) { toast('Für eine Prüfung brauchst du mindestens 3 Karten'); return; }
-    S.examNext = true; S.mode = 'alle';
-    show('study');
-    rebuildStudy();
   }
   function rate(ok) {
     if (!S.sel || TM.id === S.sel) return;
@@ -1588,8 +1435,70 @@
     var k = flat(hasCloze(q) ? q.replace(/\{\{(.+?)\}\}/g, '$1') : q);
     return db.cards.filter(function (c) { return c.id !== exceptId && flat(hasCloze(c.q) ? c.q.replace(/\{\{(.+?)\}\}/g, '$1') : c.q) === k; })[0] || null;
   }
+  /* Lücke-Knopf: Wort markieren (oder nur antippen) und Knopf drücken. Das Wort wird in {{ }} gesetzt, darunter Vorschau der Vorderseite */
+  function clozeTool(qId, btnId, prevId) {
+    var q = $(qId), b = $(btnId), pv = $(prevId), WORD = /[\p{L}\p{N}_'’-]/u;
+    function range() {
+      var v = q.value, s = q.selectionStart, e = q.selectionEnd;
+      if (s === e) {                       /* nur angetippt: Wort unter dem Cursor nehmen */
+        while (s > 0 && WORD.test(v.charAt(s - 1))) s--;
+        while (e < v.length && WORD.test(v.charAt(e))) e++;
+      } else {                             /* markiert: Leerzeichen am Rand abschneiden */
+        while (s < e && /\s/.test(v.charAt(s))) s++;
+        while (e > s && /\s/.test(v.charAt(e - 1))) e--;
+      }
+      return e > s ? [s, e] : null;
+    }
+    function taken(v, r) {                 /* liegt die Auswahl in oder an einer bestehenden Lücke? */
+      var re = /\{\{.+?\}\}/g, m;
+      while ((m = re.exec(v))) if (r[0] < m.index + m[0].length && r[1] > m.index) return true;
+      return /[{}]/.test(v.slice(r[0], r[1]));
+    }
+    function upd() {
+      var v = q.value, r = range(), inCloze = !!r && taken(v, r);
+      b.classList.toggle('primary', !!r && !inCloze);
+      pv.hidden = !hasCloze(v); if (hasCloze(v)) pv.textContent = 'Vorderseite: ' + qShow({ q: v });
+    }
+    b.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    b.addEventListener('click', function () {
+      var v = q.value, r = range();
+      if (!r) { toast('Tippe auf ein Wort oder markiere es'); q.focus(); return; }
+      var sel = v.slice(r[0], r[1]);
+      if (taken(v, r)) { toast('Dieses Wort ist schon eine Lücke'); q.focus(); return; }
+      q.value = v.slice(0, r[0]) + '{{' + sel + '}}' + v.slice(r[1]);
+      var pos = r[0] + sel.length + 4; q.focus(); q.setSelectionRange(pos, pos); upd();
+    });
+    ['input', 'keyup', 'mouseup', 'touchend', 'select', 'focus'].forEach(function (ev) { q.addEventListener(ev, upd); });
+    document.addEventListener('selectionchange', function () { if (document.activeElement === q) upd(); });
+  }
+  clozeTool('newQ', 'newClozeBtn', 'newClozePrev'); clozeTool('editQ', 'editClozeBtn', 'editClozePrev');
+
+  /* Passwortfelder: Augen-Knopf zum Anzeigen. Das Feld bleibt dasselbe (id, Label, Passwortmanager), nur der Typ wechselt. */
+  (function pwToggle() {
+    var EYE = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+    var OFF = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7c2 0 3.8.6 5.3 1.5M22 12s-3.6 7-10 7c-2 0-3.8-.6-5.3-1.5"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M3 3l18 18"/></svg>';
+    function set(inp, btn, show) {
+      inp.type = show ? 'text' : 'password';
+      btn.innerHTML = show ? OFF : EYE;
+      btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+      btn.setAttribute('aria-label', show ? 'Passwort verbergen' : 'Passwort anzeigen');
+      btn.title = show ? 'Passwort verbergen' : 'Passwort anzeigen';
+    }
+    var all = [];
+    document.querySelectorAll('input[type="password"]').forEach(function (inp) {
+      var box = document.createElement('span'); box.className = 'pwbox';
+      var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'pweye';
+      inp.parentNode.insertBefore(box, inp); box.appendChild(inp); box.appendChild(btn);
+      set(inp, btn, false);
+      btn.addEventListener('click', function () { set(inp, btn, inp.type === 'password'); inp.focus(); });
+      all.push([inp, btn]);
+    });
+    function hideAll() { all.forEach(function (x) { if (x[0].type !== 'password') set(x[0], x[1], false); }); }
+    document.addEventListener('close', hideAll, true);   // Dialog zu: Passwörter wieder verdecken
+    document.addEventListener('submit', hideAll, true);
+  })();
   function resetAdd() {
-    $('newQ').value = '';
+    $('newQ').value = ''; $('newQ').dispatchEvent(new Event('input'));
     $('newA').value = '';
     $('newTags').value = '';
     picks.new.img = ''; picks.new.show();
@@ -1598,13 +1507,16 @@
     $('p1').classList.add('on');
     $('p2').classList.remove('on');
   }
+  $('newQ').addEventListener('input', function () { $('toStep2').textContent = hasCloze($('newQ').value) ? 'Weiter' : 'Weiter zur Lösung'; });
   $('toStep2').addEventListener('click', function () {
     if (!$('newQ').value.trim()) { toast('Bitte zuerst eine Frage eingeben'); $('newQ').focus(); return; }
-    $('newA').placeholder = hasCloze($('newQ').value) ? 'Zusatz zur Lösung (kein Muss)' : 'Die Lösung';
+    var cz = hasCloze($('newQ').value);   // Lückentext: Die Lösung steckt in den Lücken, die App zeigt grün oder rot
+    $('newA').hidden = cz; $('newA').placeholder = 'Die Lösung';
+    $('step2Lbl').textContent = cz ? '2. Tags (kein Muss)' : '2. Lösung';
     $('step1').hidden = true;
     $('step2').hidden = false;
     $('p2').classList.add('on');
-    $('newA').focus();
+    (cz ? $('newTags') : $('newA')).focus();
   });
   $('backStep1').addEventListener('click', function () {
     $('step2').hidden = true;
@@ -1613,7 +1525,7 @@
     $('newQ').focus();
   });
   $('saveCard').addEventListener('click', function () {
-    var q = $('newQ').value.trim(), a = $('newA').value.trim();
+    var q = $('newQ').value.trim(), a = hasCloze(q) ? '' : $('newA').value.trim();
     if (!a && !hasCloze(q)) { toast('Bitte eine Lösung eingeben'); $('newA').focus(); return; }
     function doSave() {
       var c = { id: uid(), q: q, a: a || clozeWords(q).join(', '), cat: addCat }, tg = parseTags($('newTags').value);
@@ -1690,16 +1602,18 @@
     if (!c) return;
     editId = id; editCat = c.cat;
     renderEditChips();
-    $('editQ').value = c.q;
-    $('editA').value = c.a;
+    $('editQ').value = c.q; $('editQ').dispatchEvent(new Event('input'));
+    $('editA').value = c.a; syncEditA();
     $('editTags').value = (c.tags || []).join(', ');
     picks.edit.img = c.img || ''; picks.edit.show();
     $('editDlg').showModal();
   }
+  function syncEditA() { var cz = hasCloze($('editQ').value); $('editA').hidden = cz; $('editALbl').hidden = cz; }
+  $('editQ').addEventListener('input', syncEditA);
   $('editCancel').addEventListener('click', function () { $('editDlg').close(); });
   $('editSave').addEventListener('click', function () {
-    var q = $('editQ').value.trim(), a = $('editA').value.trim();
-    if (!q || (!a && !hasCloze(q))) { toast('Frage und Lösung dürfen nicht leer sein'); return; }
+    var q = $('editQ').value.trim(), a = hasCloze(q) ? '' : $('editA').value.trim();
+    if (!q || (!a && !hasCloze(q))) { toast(hasCloze(q) ? 'Die Frage darf nicht leer sein' : 'Frage und Lösung dürfen nicht leer sein'); return; }
     var c = byId(editId);
     if (c) {
       c.q = q; c.a = a || clozeWords(q).join(', '); c.cat = editCat;
@@ -1792,7 +1706,7 @@
       });
     } catch (e) {}
     if (!file || !navigator.share) { shareFallback(text); return; }
-    navigator.share({ files: [file], title: 'Kartenbox Karten' })
+    navigator.share({ files: [file], title: 'KarteiDeck Karten' })
       .catch(function (e) { if (!e || e.name !== 'AbortError') shareFallback(text); });
   });
   $('importBtn').addEventListener('click', function () { $('importFile').click(); });
@@ -1860,9 +1774,18 @@
   $('importFile').addEventListener('change', function (e) {
     var f = e.target.files[0];
     if (!f) return;
+    e.target.value = '';
+    // Erst das Format prüfen, dann lesen: nur Tabellen (CSV, TSV, TXT) und Kartendateien (JSON, JS)
+    var ext = (f.name.match(/\.([^.]+)$/) || [])[1];
+    ext = ext ? ext.toLowerCase() : '';
+    if (ext === 'apkg' || ext === 'colpkg') { toast('Anki-Pakete gehen nicht. In Anki „Notes in Plain Text“ (.txt) exportieren'); return; }
+    if (['json', 'js', 'csv', 'tsv', 'txt'].indexOf(ext) < 0) { toast('Dateityp nicht erlaubt. Erlaubt: CSV, TSV, TXT, JSON'); return; }
+    if (f.size > 5 * 1024 * 1024) { toast('Die Datei ist zu groß (höchstens 5 MB)'); return; }
+    if (!f.size) { toast('Die Datei ist leer'); return; }
     var r = new FileReader();
     r.onload = function () {
       try {
+        if (String(r.result).indexOf('\u0000') >= 0) { toast('Das ist keine Textdatei'); return; }   // Binärdatei mit falscher Endung
         var txt = String(r.result), t0 = txt.replace(/^﻿/, '').trimStart().charAt(0);
         if (/\.(csv|tsv|txt)$/i.test(f.name) && t0 !== '{' && t0 !== '[') {   // Tabelle
           var list = tableToData(parseTable(txt), f.name);
@@ -1876,7 +1799,6 @@
       } catch (err) { toast('Datei konnte nicht gelesen werden'); }
     };
     r.readAsText(f);
-    e.target.value = '';
   });
   $('csvBtn').addEventListener('click', function () {
     if (!db.cards.length) { toast('Noch keine Karten'); return; }
@@ -1891,7 +1813,7 @@
     var items = db.cards.filter(function (c) { return (listCat === null || c.cat === listCat) && (!term || flat([c.q, c.a, c.cat].concat(c.tags || []).join(' ')).indexOf(term) >= 0); });
     if (!items.length) { toast('Keine Karten zum Drucken'); return; }
     var host = $('printArea'); host.textContent = '';
-    host.appendChild(el('h1', null, 'Kartenbox' + (listCat ? ': ' + listCat : '')));
+    host.appendChild(el('h1', null, 'KarteiDeck' + (listCat ? ': ' + listCat : '')));
     items.forEach(function (c) {
       var row = el('div', 'prow');
       var q = el('div', 'pq', c.q); if (c.img) { var im = el('img'); im.src = c.img; im.alt = ''; q.appendChild(im); }
@@ -2066,10 +1988,13 @@
     REF.push(refresh); refresh();
     return w;
   }
+  var optLock = false;   // true: Zusatzoptionen sind verdeckt, weil Konten gehen, aber niemand angemeldet ist
   function renderOptions() {
     var host = $('optHost');
     host.textContent = '';
     REF = [];
+    optLock = typeof K !== 'undefined' && !!K.on && !PRO.options;
+    var lockBox = el('div', 'lockbox locked');
     function tape() { return el('span', 'neu', 'Neu'); }
     function group(title, neu) { var g = el('section', 'group'), h = el('h3', null, title); if (neu && neuNow) h.appendChild(tape()); g.appendChild(h); host.appendChild(g); return g; }
     function row(g, label, ctl, neu) { var r = el('div', 'set'), l = el('span', 'lab', label); if (neu && neuNow) l.appendChild(tape()); r.appendChild(l); r.appendChild(ctl); g.appendChild(r); }
@@ -2098,48 +2023,57 @@
     row(g4, 'Sekunden', stepper('lernen.sekunden', 10, 60, 5, function (x) { return x + ' s'; }, function () { return CFG.lernen.timer; }));
     row(g4, 'Tagesziel', stepper('lernen.tagesziel', 0, 200, 5, function (x) { return x ? x + ' Karten' : 'aus'; }));
     row(g4, 'Animation', seg('animation.an', onOff));
-    if (window.innerWidth >= 900) {   // am Handy gibt es keinen Player, dort wäre kein Platz
-      var gp = group('Kassettenplayer', true);
-      row(gp, 'Player auf dem Tisch', seg('lernen.player', onOff));
-      row(gp, 'Sekunden pro Seite', stepper('lernen.auto', 3, 30, 1, function (x) { return x + ' s'; }, function () { return CFG.lernen.player; }));
-      gp.appendChild(el('p', 'hint', 'Spielt Fragen und Lösungen immer wieder ab, zum Einprägen. Nur am Computer.'));
-    }
     row(g4, 'Tempo', seg('animation.tempo', [{ v: 0.6, label: 'Langsam' }, { v: 1, label: 'Normal' }, { v: 1.6, label: 'Schnell' }]));
     row(g4, 'Runde mischen', seg('lernen.mischen', onOff));
     row(g4, 'Tastatur', seg('lernen.tastatur', onOff));
 
-    var g5 = group('Lernarten', true);
-    row(g5, 'Richtung', seg('lernen.richtung', [{ v: 'vor', label: 'Normal' }, { v: 'rueck', label: 'Rückwärts' }, { v: 'misch', label: 'Gemischt' }]), true);
-    row(g5, 'Antwort tippen', seg('lernen.tippen', onOff), true);
-    if (window.speechSynthesis) {
-      row(g5, 'Vorlesen', seg('lernen.vorlesen', [{ v: 'aus', label: 'Aus' }, { v: 'frage', label: 'Frage' }, { v: 'loesung', label: 'Lösung' }, { v: 'beides', label: 'Beides' }]), true);
-      row(g5, 'Sprache', seg('lernen.sprache', [{ v: 'de-DE', label: 'DE' }, { v: 'en-GB', label: 'EN' }, { v: 'fr-FR', label: 'FR' }, { v: 'es-ES', label: 'ES' }, { v: 'it-IT', label: 'IT' }]), true);
-    }
-    if (window.speechSynthesis) {
-      var nv = 0; try { nv = (speechSynthesis.getVoices() || []).length; } catch (e) {}
-      var vp = el('p', 'hint'); g5.appendChild(vp);
-      var vtext = function () {
-        var vf = voiceFor(CFG.lernen.sprache);
-        vp.textContent = !nv ? 'Dein Browser meldet keine Stimmen. Vorlesen geht dann nicht.' : vf ? 'Stimme: ' + vf.name : 'Keine ' + LANGN[CFG.lernen.sprache] + 'e Stimme gefunden. Installiere sie in den Systemeinstellungen unter Sprache.';
-      };
-      vtext(); REF.push(vtext);
-      var tb = el('button', 'btn', 'Stimme testen'); tb.type = 'button';
-      tb.addEventListener('click', function () { try { speechSynthesis.cancel(); say(LANGT[CFG.lernen.sprache], false); } catch (e) { toast('Vorlesen geht hier nicht'); } });
-      tb.disabled = !nv; g5.appendChild(tb);
-    }
-    row(g5, 'Karten pro Prüfung', stepper('lernen.pruefung', 5, 50, 5, String), true);
-    var eb = el('button', 'btn primary', 'Prüfung starten'); eb.type = 'button'; eb.addEventListener('click', startExam);
-    g5.appendChild(eb);
     row(g4, 'Design', seg('design.thema', [{ v: 'auto', label: 'Auto' }, { v: 'hell', label: 'Hell' }, { v: 'dunkel', label: 'Dunkel' }]));
 
+    if (optLock || PRO.options) { var sp = el('h2', 'optsep', 'Mit Konto'); host.appendChild(sp); }
+    if (PRO.options) PRO.options({ group: group, row: row, onOff: onOff, px: px });
+    else if (optLock) {
+      var fake = [['Lernarten', ['Richtung', 'Antwort tippen', 'Wortbank', 'Vorlesen', 'Karten pro Prüfung']]];
+      if (window.innerWidth >= 900) fake.unshift(['Kassettenplayer', ['Player auf dem Tisch', 'Sekunden pro Seite']]);
+      var inner = el('div', 'lockin');
+      fake.forEach(function (f) {
+        var g = el('section', 'group'); g.appendChild(el('h3', null, f[0]));
+        f[1].forEach(function (t) { var r = el('div', 'set'); r.appendChild(el('span', 'lab', t)); r.appendChild(el('span', 'fakectl', 'An')); g.appendChild(r); });
+        inner.appendChild(g);
+      });
+      inner.setAttribute('aria-hidden', 'true'); inner.inert = true;
+      lockBox.appendChild(inner);
+      var ov = el('div', 'lockov'), card = el('div', 'lockcard');
+      card.appendChild(el('strong', null, 'Mehr Optionen mit Konto'));
+      card.appendChild(el('p', null, 'Lernarten, Player und Statistik gibt es nach der Anmeldung. Das Konto ist kostenlos.'));
+      var lb = el('div', 'tools');
+      var l1 = el('button', 'btn primary', 'Konto anlegen'); l1.type = 'button'; l1.addEventListener('click', function () { openAcc('register'); });
+      var l2 = el('button', 'btn', 'Anmelden'); l2.type = 'button'; l2.addEventListener('click', function () { openAcc('login'); });
+      lb.appendChild(l1); lb.appendChild(l2); card.appendChild(lb);
+      ov.appendChild(card); lockBox.appendChild(ov);
+      host.appendChild(lockBox);
+    }
+    var gl = group('Lernstand');
+    gl.appendChild(el('p', null, 'Gewusste Karten rutschen ein Fach höher und kommen später wieder. Nochmal schickt sie zurück in Fach 1.'));
+    if (PRO.statButtons) PRO.statButtons(gl);
+    else if (optLock) { var sl = el('button', 'btn', 'Statistik (mit Konto)'); sl.type = 'button'; sl.addEventListener('click', proNeed); gl.appendChild(sl); }
+    var rb = el('button', 'btn danger', 'Lernstand zurücksetzen'); rb.type = 'button';
+    rb.addEventListener('click', function () {
+      confirmDlg('Lernstand zurücksetzen?', 'Alle Karten gelten wieder als neu, Tagesziel und Serie starten bei null. Die Karten bleiben.', function () {
+        db.cards.forEach(function (c) { delete c.n; delete c.box; delete c.due; delete c.last; });
+        db.log = {};
+        save(); toast('Lernstand zurückgesetzt');
+      }, 'Zurücksetzen', true);
+    });
+    gl.appendChild(rb);
+
     var gi = group('App');
-    gi.appendChild(el('p', null, INST.evt ? 'Installiere die Kartenbox wie eine App. Sie läuft dann in einem eigenen Fenster, auch offline.'
+    gi.appendChild(el('p', null, INST.evt ? 'Installiere das KarteiDeck wie eine App. Sie läuft dann in einem eigenen Fenster, auch offline.'
       : INST.web ? 'Dein Browser bietet gerade keine Installation an. Sie ist vielleicht schon installiert.'
-      : 'Als lokale Datei läuft die Kartenbox offline, kann aber nicht installiert werden. Installieren geht, wenn die Seite über https läuft.'));
+      : 'Als lokale Datei läuft das KarteiDeck offline, kann aber nicht installiert werden. Installieren geht, wenn die Seite über https läuft.'));
     if (INST.evt) { var ib = el('button', 'btn primary', 'App installieren'); ib.type = 'button'; ib.addEventListener('click', installApp); gi.appendChild(ib); }
 
     var gu = group('Version');
-    gu.appendChild(el('p', null, 'Kartenbox ' + VERSION));
+    gu.appendChild(el('p', null, 'KarteiDeck ' + VERSION));
     if (updEnabled()) {
       row(gu, 'Nach Updates suchen', seg('update.pruefen', onOff));
       gu.appendChild(el('p', null, 'Die Suche ruft GitHub auf, dabei sieht GitHub deine IP-Adresse. Ohne Verbindung passiert nichts, die App läuft immer offline.'));
@@ -2168,21 +2102,6 @@
       g5.appendChild(br);
     }
 
-    var gl = group('Lernstand');
-    gl.appendChild(el('p', null, 'Gewusste Karten rutschen ein Fach höher und kommen später wieder. Nochmal schickt sie zurück in Fach 1.'));
-    var stB = el('button', 'btn primary', 'Statistik und Lernkurve'); stB.type = 'button';
-    stB.addEventListener('click', function () { openStats(); });
-    var sdB = el('button', 'btn', 'Statistik-Demo'); sdB.type = 'button'; sdB.title = 'Beispieldaten, schließt nach 2 Minuten'; sdB.addEventListener('click', function () { openStats(true); });
-    gl.appendChild(stB); gl.appendChild(sdB);
-    var rb = el('button', 'btn danger', 'Lernstand zurücksetzen'); rb.type = 'button';
-    rb.addEventListener('click', function () {
-      confirmDlg('Lernstand zurücksetzen?', 'Alle Karten gelten wieder als neu, Tagesziel und Serie starten bei null. Die Karten bleiben.', function () {
-        db.cards.forEach(function (c) { delete c.n; delete c.box; delete c.due; delete c.last; });
-        db.log = {};
-        save(); toast('Lernstand zurückgesetzt');
-      }, 'Zurücksetzen', true);
-    });
-    gl.appendChild(rb);
 
     var g6 = group('Einstellungen');
     g6.appendChild(el('p', null, 'Mit verbundenem Ordner stehen die Werte in einstellungen.js. Sonst gelten sie nur in diesem Browser.'));
@@ -2258,9 +2177,11 @@
     } catch (e) { return null; } finally { clearTimeout(t); }
   }
   function updSeen() { try { return Number(localStorage.getItem(UPD_KEY)) || 0; } catch (e) { return 0; } }
+  var updTry = 0;
   async function checkUpdate(manual) {
     if (!updEnabled()) { if (manual) toast(INST.web ? 'Diese Seite aktualisiert sich selbst' : 'Update-Suche ist nicht eingerichtet'); return; }
     if (!manual) {
+      if (document.querySelector('dialog[open]')) { if (updTry++ < 40) setTimeout(function () { checkUpdate(false); }, 10000); return; }   // Startseite oder anderer Dialog offen: später nochmal versuchen, statt den Hinweis zu verpassen
       if (!CFG.update.pruefen || navigator.onLine === false || Date.now() - updSeen() < 864e5) return;
       try { localStorage.setItem(UPD_KEY, String(Date.now())); } catch (e) {}
     }
@@ -2298,7 +2219,7 @@
       }
       var main = got.filter(function (g) { return g.f.pfad === 'karteikarten.html'; })[0];
       var html = new TextDecoder().decode(main.buf);
-      if (html.indexOf("var VERSION = '" + info.version + "'") < 0 || html.indexOf('KARTENBOX_EINSTELLUNGEN') < 0) throw new Error('inhalt');
+      if (html.indexOf('name="kd-version" content="' + info.version + '"') < 0 || html.indexOf('KARTENBOX_EINSTELLUNGEN') < 0) throw new Error('inhalt');
     } catch (e) { toast('Update abgebrochen, nichts wurde geändert'); return; }
     got.sort(function (a, b) { return (a.f.pfad === 'karteikarten.html') - (b.f.pfad === 'karteikarten.html'); });   // die HTML kommt zuletzt
     var done = [];
@@ -2326,12 +2247,448 @@
   }
   setTimeout(function () { checkUpdate(false); }, 3000);
 
+
+  /* ===== Konto: Abgleich mit dem Server (nur wenn die Konto-Schnittstelle antwortet) ===== */
+  var NOSYNC = ['anbieter', 'start', 'konto', 'seite'];
+  var K = { mock: false, on: false, csrf: '', ft: '', user: null, rev: 0, state: '', paused: false, pulling: false, busy: false, again: false, timer: null, resetTok: '' };
+  function kurl(a) { return CFG.konto.api + '?a=' + a; }
+  async function kapi(a, body, retried) {
+    var opt = { credentials: 'same-origin', cache: 'no-store', referrerPolicy: 'no-referrer', headers: {} };
+    if (body !== undefined) {
+      opt.method = 'POST';
+      opt.headers['Content-Type'] = 'application/json';
+      opt.headers['X-CSRF-Token'] = K.csrf;
+      opt.body = typeof body === 'string' ? body : JSON.stringify(body);
+    }
+    var r, j;
+    if (K.mock) { j = await mockApi(a, body === undefined ? undefined : (typeof body === 'string' ? JSON.parse(body) : body)); r = { status: j.status }; }
+    else try { r = await fetch(kurl(a), opt); j = await r.json(); } catch (e) { return { ok: false, status: 0, err: 'Keine Verbindung zum Server.' }; }
+    if (!j || typeof j !== 'object') return { ok: false, status: r.status, err: 'Unerwartete Antwort.' };
+    j.status = r.status;
+    if (j.err === 'csrf' && !retried) { await kProbe(); return kapi(a, body, true); }
+    if (j.csrf) K.csrf = j.csrf;
+    if (j.code === 'auth' && K.user) { K.user = null; K.state = ''; clearTimeout(K.timer); K.timer = null; kUI(); toast('Bitte melde dich neu an.'); }
+    return j;
+  }
+  /* Testmodus (konto.test): ersetzt den Server durch einen Speicher in diesem Browser, nur zum Ausprobieren der Oberfläche. Nichts davon ist sicher. */
+  var MOCK_KEY = 'kartenbox-testkonto';
+  async function sha(t) {
+    try { var b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('kb:' + t)); return Array.prototype.map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); } catch (e) { return 'x:' + t; }
+  }
+  async function mockApi(a, b) {
+    var d; try { d = JSON.parse(localStorage.getItem(MOCK_KEY)); } catch (e) {}
+    if (!d || typeof d !== 'object') d = { users: {}, data: {}, sess: '' };
+    b = b || {};
+    var email = String(b.email || '').trim().toLowerCase();
+    function put() { try { localStorage.setItem(MOCK_KEY, JSON.stringify(d)); } catch (e) {} }
+    function ok(o) { return Object.assign({ ok: true, status: 200 }, o); }
+    function no(st, m, x) { return Object.assign({ ok: false, status: st, err: m }, x || {}); }
+    var me = d.sess && d.users[d.sess] ? d.sess : '';
+    var needs = ['data', 'save', 'password', 'delete'];
+    if (needs.indexOf(a) >= 0 && !me) return no(401, 'Bitte melde dich an.', { code: 'auth' });
+    if (a === 'csrf') return ok({ csrf: 'test', ft: 'test', user: me ? { email: me } : null });
+    if (a === 'register') {
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return no(400, 'Bitte eine gültige E-Mail-Adresse eingeben.');
+      if (String(b.password || '').length < 10) return no(400, 'Das Passwort braucht mindestens 10 Zeichen.');
+      if (!d.users[email]) { d.users[email] = { pw: await sha(b.password) }; put(); }
+      return ok({ msg: 'Testmodus: Konto angelegt, die Bestätigung ist übersprungen. Du kannst dich anmelden.' });
+    }
+    if (a === 'login') {
+      var u = d.users[email];
+      if (!u || u.pw !== await sha(b.password || '')) return no(401, 'E-Mail oder Passwort stimmt nicht.');
+      d.sess = email; put(); return ok({ csrf: 'test', user: { email: email } });
+    }
+    if (a === 'logout') { d.sess = ''; put(); return ok({ csrf: 'test' }); }
+    if (a === 'verify') return ok({ msg: 'Testmodus: nichts zu bestätigen.' });
+    if (a === 'reset-request') return ok({ msg: 'Testmodus: Es wird keine Mail gesendet. Melde dich an und nutze „Passwort ändern".' });
+    if (a === 'reset') return no(400, 'Im Testmodus gibt es keinen Link.');
+    if (a === 'contact') {
+      if (!String(b.name || '').trim() || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(b.email || '').trim()) || String(b.message || '').trim().length < 10) return no(400, 'Bitte Name, gültige E-Mail und eine Nachricht mit mindestens 10 Zeichen eingeben.');
+      return ok({ msg: 'Testmodus: Die Nachricht wurde nicht gesendet.' });
+    }
+    if (a === 'password') {
+      if (d.users[me].pw !== await sha(b.old || '')) return no(401, 'Das alte Passwort stimmt nicht.');
+      if (String(b.password || '').length < 10) return no(400, 'Das Passwort braucht mindestens 10 Zeichen.');
+      d.users[me].pw = await sha(b.password); put(); return ok({ msg: 'Passwort geändert.' });
+    }
+    if (a === 'delete') {
+      if (d.users[me].pw !== await sha(b.password || '')) return no(401, 'Das Passwort stimmt nicht.');
+      delete d.users[me]; delete d.data[me]; d.sess = ''; put(); return ok({ csrf: 'test', msg: 'Dein Konto und alle Daten dazu sind gelöscht.' });
+    }
+    if (a === 'data') { var x = d.data[me]; return ok({ rev: x ? x.rev : 0, updated: 0, data: x ? JSON.parse(x.body) : null }); }
+    if (a === 'save') {
+      var cur = d.data[me] ? d.data[me].rev : 0;
+      if ((b.rev | 0) !== cur) return no(409, 'conflict', { rev: cur });
+      d.data[me] = { rev: cur + 1, body: JSON.stringify(b.data) }; put(); return ok({ rev: cur + 1 });
+    }
+    return no(404, 'unbekannt');
+  }
+  async function kProbe() {
+    if (K.mock) { var m = await mockApi('csrf'); K.csrf = m.csrf; K.ft = m.ft; K.user = m.user; return m; }
+    try {
+      var r = await fetch(kurl('csrf'), { credentials: 'same-origin', cache: 'no-store', referrerPolicy: 'no-referrer' });
+      var j = await r.json();
+      if (!j || !j.ok || !j.csrf) return null;
+      K.csrf = j.csrf; K.ft = j.ft || ''; K.user = j.user || null;
+      return j;
+    } catch (e) { return null; }
+  }
+  function hhmm() { var d = new Date(); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+  function kUI() {
+    var b = $('accBtn');
+    b.hidden = !K.on;
+    b.classList.toggle('on', !!K.user && !K.paused && !/fehlgeschlagen|Zu viele/.test(K.state));
+    b.classList.toggle('warn', !!K.user && (K.paused || /fehlgeschlagen|Zu viele/.test(K.state)));
+    $('accTest').hidden = !K.mock;
+    b.title = K.user ? 'Konto: ' + K.user.email + (K.state ? '. ' + K.state : '') : 'Anmelden oder registrieren';
+    ['ftKt', 'landKt'].forEach(function (id) { $(id).hidden = !K.on; });
+    $('dsKonto').hidden = !K.on;
+    $('dsNoK').hidden = K.on; $('dsNoK2').hidden = K.on;
+    if (K.probed && K.on && !K.user && (PRO.options || proCached())) proDrop();
+    if (K.user && !PRO.options) kProLoad();
+    if (current === 'opts' && optLock !== (K.on && !PRO.options)) renderOptions();
+    document.querySelectorAll('.lbadge').forEach(function (n) { n.hidden = K.on; });
+    if ($('accDlg').open && K.user) { $('acState').textContent = K.paused ? 'Abgleich pausiert. Tippe auf „Jetzt abgleichen“.' : K.state; }
+  }
+  /* Dialog-Ansichten */
+  var ACC_TITLE = { login: 'Anmelden', register: 'Konto anlegen', forgot: 'Passwort vergessen', newpw: 'Neues Passwort', account: 'Konto', chpw: 'Passwort ändern', del: 'Konto löschen', msg: 'Konto' };
+  function accView(v, msg, err) {
+    document.querySelectorAll('#accDlg [data-v]').forEach(function (n) { n.hidden = n.dataset.v !== v; });
+    $('accErr').textContent = err || '';
+    $('accMsg').textContent = msg || '';
+    $('accTitle').textContent = ACC_TITLE[v];
+    if (v === 'account') { $('acMail').textContent = K.user ? K.user.email : ''; kUI(); }
+    var f = document.querySelector('#accDlg [data-v="' + v + '"] input:not(.hp)');
+    if (f) setTimeout(function () { f.focus(); }, 30);
+  }
+  /* Formular-Fenster (Konto, Kontakt, Abgleich) ohne showModal: Ein modales Fenster liegt in der obersten Ebene des Browsers, und Passwortmanager
+     (Bitwarden u. a.) können ihr Menü dann nicht darüber zeigen und melden "Diese Seite beeinträchtigt …". Hier bleibt das Fenster normal in der Seite,
+     der Hintergrund wird mit inert gesperrt und abgedunkelt. */
+  var NM = { bg: null, open: [] };
+  function nmUpdate() {
+    var on = NM.open.length > 0;
+    if (on && !NM.bg) { NM.bg = document.createElement('div'); NM.bg.className = 'nmbg'; document.body.appendChild(NM.bg); }
+    if (!on && NM.bg) { NM.bg.remove(); NM.bg = null; }
+    ['.wrap', 'body > .foot'].forEach(function (s) { var n = document.querySelector(s); if (n) n.inert = on; });
+  }
+  function openNM(d) {
+    if (d.open) return;
+    var ld = $('landing'); if (ld.open) ld.close();   // die Startseite ist modal und würde das Fenster verdecken
+    d.classList.add('nm'); d.show();
+    NM.open.push(d); nmUpdate();
+    var f = d.querySelector('input:not([type=hidden]):not(.hp), button, textarea');
+    if (f && !d.querySelector('[autofocus]')) { try { f.focus({ preventScroll: true }); } catch (e) {} }
+    if (!d.__nm) { d.__nm = true; d.addEventListener('close', function () { NM.open = NM.open.filter(function (x) { return x !== d; }); nmUpdate(); }); }
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape' || !NM.open.length || document.querySelector('dialog[open]:modal')) return;
+    NM.open[NM.open.length - 1].close();
+  });
+  function openAcc(v, msg, err) {
+    accView(v || (K.user ? 'account' : 'login'), msg, err);
+    openNM($('accDlg'));
+  }
+  function accForm(v, fn) {
+    document.querySelector('#accDlg [data-v="' + v + '"]').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var btn = e.target.querySelector('[type=submit]');
+      btn.disabled = true; $('accErr').textContent = '';
+      try { await fn(); } finally { btn.disabled = false; }
+    });
+  }
+  function accFail(j, dflt) { $('accErr').textContent = j.err || dflt; }
+  accForm('login', async function () {
+    var mail = $('lgMail').value.trim(), pw = $('lgPw').value;
+    if (!mail || !pw) return accFail({}, 'Bitte E-Mail und Passwort eingeben.');
+    var j = await kapi('login', { email: mail, password: pw });
+    if (!j.ok) return accFail(j, 'Anmeldung fehlgeschlagen.');
+    $('lgPw').value = ''; K.user = j.user; K.paused = false; K.rev = 0; K.state = '';
+    accView('account', 'Angemeldet.'); kUI(); kPull();
+  });
+  accForm('register', async function () {
+    var mail = $('rgMail').value.trim(), pw = $('rgPw').value;
+    if (!mail || !pw) return accFail({}, 'Bitte E-Mail und Passwort eingeben.');
+    if (pw !== $('rgPw2').value) return accFail({}, 'Die Passwörter sind nicht gleich.');
+    var j = await kapi('register', { email: mail, password: pw, website: $('rgHp').value });
+    if (!j.ok) return accFail(j, 'Registrierung fehlgeschlagen.');
+    $('rgPw').value = ''; $('rgPw2').value = '';
+    accView('msg', j.msg);
+  });
+  accForm('forgot', async function () {
+    var mail = $('fgMail').value.trim();
+    if (!mail) return accFail({}, 'Bitte E-Mail eingeben.');
+    var j = await kapi('reset-request', { email: mail });
+    if (!j.ok) return accFail(j, 'Das hat nicht geklappt.');
+    accView('msg', j.msg);
+  });
+  accForm('newpw', async function () {
+    var pw = $('npPw').value;
+    if (pw !== $('npPw2').value) return accFail({}, 'Die Passwörter sind nicht gleich.');
+    var j = await kapi('reset', { token: K.resetTok, password: pw });
+    if (!j.ok) return accFail(j, 'Das hat nicht geklappt.');
+    $('npPw').value = ''; $('npPw2').value = ''; K.resetTok = '';
+    accView('msg', j.msg);
+  });
+  accForm('chpw', async function () {
+    var j = await kapi('password', { old: $('cpOld').value, password: $('cpNew').value });
+    if (!j.ok) return accFail(j, 'Das hat nicht geklappt.');
+    $('cpOld').value = ''; $('cpNew').value = '';
+    accView('account', j.msg);
+  });
+  accForm('del', async function () {
+    var j = await kapi('delete', { password: $('dlPw').value });
+    if (!j.ok) return accFail(j, 'Das hat nicht geklappt.');
+    $('dlPw').value = ''; K.user = null; K.rev = 0; K.state = ''; clearTimeout(K.timer); K.timer = null;
+    kUI(); accView('login', j.msg);
+  });
+  $('acOut').addEventListener('click', async function () {
+    clearTimeout(K.timer); K.timer = null;
+    if (K.user && !K.paused) await kPush(true);
+    var wipe = $('acWipe').checked, synced = !K.paused && !/fehlgeschlagen|Zu viele/.test(K.state);
+    await kapi('logout', {});
+    K.user = null; K.rev = 0; K.state = ''; K.paused = false;
+    var note = 'Abgemeldet. Deine Karten bleiben auf diesem Gerät.';
+    if (wipe && synced) {
+      db.cats = [DEF]; db.cards = []; db.log = {}; db.colors = {};
+      persist(); scheduleWrite(); studyDirty = true; show(current);
+      note = 'Abgemeldet. Die Karten sind von diesem Gerät entfernt.';
+    } else if (wipe) note = 'Abgemeldet. Die Karten bleiben hier, weil der letzte Abgleich nicht geklappt hat.';
+    $('acWipe').checked = false;
+    kUI(); accView('login', note);
+  });
+  $('acSync').addEventListener('click', async function () { K.paused = false; K.state = 'Gleiche ab …'; kUI(); await kPull(); });
+  $('accDlg').addEventListener('click', function (e) {
+    var g = e.target.closest('[data-go]');
+    if (g) { accView(g.dataset.go); return; }
+    if (e.target.closest('[data-close]')) $('accDlg').close();
+    if (e.target.closest('[data-ds]')) openLegal('dsDlg');
+  });
+  $('accBtn').addEventListener('click', function () { openAcc(); });
+
+  /* Abgleich */
+  function userCfg() { var o = clone(CFG); NOSYNC.forEach(function (k) { delete o[k]; }); return o; }
+  function snapshot() { return { cards: db.cards, cats: db.cats, log: db.log, colors: db.colors, cfg: userCfg() }; }
+  function hasLocal() { return db.cards.length > 0 || Object.keys(db.log).length > 0; }
+  function norm(o) { return JSON.stringify(parseData({ cards: o.cards, cats: o.cats, log: o.log, colors: o.colors })); }
+  function scheduleSync() {
+    if (!K || !K.user || K.paused || K.pulling) return;
+    clearTimeout(K.timer);
+    K.state = 'Änderungen warten'; kUI();
+    K.timer = setTimeout(function () { K.timer = null; kPush(); }, 2000);
+  }
+  async function kPush(quiet) {
+    clearTimeout(K.timer); K.timer = null;
+    if (!K.user || K.paused) return;
+    if (K.busy) { K.again = true; return; }
+    var body = JSON.stringify({ rev: K.rev, data: snapshot() });
+    if (body.length > 7500000) { K.state = 'Zu viele Daten für das Konto. Bilder verkleinern oder Karten löschen.'; kUI(); return; }
+    K.busy = true;
+    var j = await kapi('save', body);
+    K.busy = false;
+    if (j.ok) { K.rev = j.rev; K.state = 'Gespeichert um ' + hhmm(); }
+    else if (j.status === 409) { K.rev = j.rev; K.paused = true; if (!quiet) kAsk('conflict'); }
+    else if (j.status === 401) { K.user = null; K.state = ''; toast('Bitte melde dich neu an.'); }
+    else { K.state = 'Abgleich fehlgeschlagen: ' + (j.err || 'unbekannt'); K.timer = setTimeout(function () { K.timer = null; kPush(); }, 30000); }
+    kUI();
+    if (K.again) { K.again = false; scheduleSync(); }
+  }
+  function kTake(d) {
+    K.pulling = true;
+    try {
+      takeData(parseData({ cards: d.cards, cats: d.cats, log: d.log, colors: d.colors }));
+      var keep = {};
+      NOSYNC.forEach(function (k) { keep[k] = CFG[k]; });
+      CFG = normalize(merge(FILECFG, d.cfg || {}));
+      NOSYNC.forEach(function (k) { CFG[k] = keep[k]; });
+      saveCfg(); applyCfg();
+      REF.forEach(function (f) { f(); });
+      studyDirty = true; show(current);
+    } finally { K.pulling = false; }
+    K.state = 'Konto-Stand geladen um ' + hhmm(); kUI();
+  }
+  async function kPull() {
+    var j = await kapi('data');
+    if (!j.ok) { K.state = 'Abgleich fehlgeschlagen: ' + (j.err || 'unbekannt'); kUI(); return; }
+    var d = j.data;
+    if (!d) { K.rev = 0; if (hasLocal()) await kPush(); else { K.state = 'Das Konto ist noch leer.'; kUI(); } return; }
+    if (!hasLocal()) { K.rev = j.rev; kTake(d); toast('Konto-Stand geladen'); return; }
+    if (j.rev === K.rev) { await kPush(); return; }
+    if (norm(d) === norm(snapshot())) { K.rev = j.rev; K.state = 'Alles aktuell um ' + hhmm(); kUI(); return; }
+    K.rev = j.rev; K.paused = true; K.srvCount = d.cards.length;
+    kAsk('first');
+  }
+  async function kPoll() {
+    if (!K.user || K.paused || K.busy || K.pulling || document.hidden) return;
+    var j = await kapi('data');
+    if (!j.ok || !j.data || j.rev === K.rev) return;
+    if (K.timer || !hasLocal()) { if (K.timer) { K.rev = j.rev; K.paused = true; K.srvCount = j.data.cards.length; kAsk('conflict'); } else { K.rev = j.rev; kTake(j.data); toast('Neuer Stand vom Konto geladen'); } return; }
+    K.rev = j.rev; kTake(j.data); toast('Neuer Stand vom Konto geladen');
+  }
+  function kAsk(kind) {
+    var n = K.srvCount, m = db.cards.length;
+    $('syText').textContent = (kind === 'first'
+      ? 'Auf dem Konto liegen ' + n + ' Karten, hier sind ' + m + '. Welcher Stand soll gelten?'
+      : 'Auf dem Konto liegt ein neuerer Stand, zum Beispiel von einem anderen Gerät. Welcher soll gelten?')
+      + ' Der andere wird überschrieben. Tipp: Sichere vorher mit „Karten speichern“.';
+    openNM($('syncDlg'));
+    kUI();
+  }
+  $('syServer').addEventListener('click', async function () {
+    $('syncDlg').close();
+    var j = await kapi('data');
+    if (!j.ok || !j.data) { K.state = 'Abgleich fehlgeschlagen'; kUI(); return; }
+    K.rev = j.rev; K.paused = false; kTake(j.data); toast('Konto-Stand geladen');
+  });
+  $('syLocal').addEventListener('click', function () { $('syncDlg').close(); K.paused = false; kPush(); });
+  $('syLater').addEventListener('click', function () { $('syncDlg').close(); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) kPoll(); });
+  setInterval(kPoll, 60000);
+
+  /* Kontaktformular */
+  async function openContact() {
+    $('ctErr').textContent = '';
+    openNM($('ctDlg'));
+    await kProbe();
+  }
+  ['ftKt', 'landKt'].forEach(function (id) { $(id).addEventListener('click', openContact); });
+  $('ctDlg').addEventListener('click', function (e) {
+    if (e.target.closest('[data-close]')) $('ctDlg').close();
+    if (e.target.closest('[data-ds]')) openLegal('dsDlg');
+  });
+  /* Rechenaufgabe vor dem Senden: Der Server gibt eine Aufgabe, der Browser sucht eine Zahl, deren SHA-256 mit genug Nullbits beginnt. Dauert ein bis zwei Sekunden, kostet Bots Zeit, kein Dienst von Dritten. */
+  async function powSolve(c) {
+    var bits = parseInt(c.split('.')[2], 10), enc = new TextEncoder(), n = 0, B = 128;
+    while (true) {
+      var jobs = [];
+      for (var i = 0; i < B; i++) jobs.push(crypto.subtle.digest('SHA-256', enc.encode(c + ':' + (n + i))));
+      var res = await Promise.all(jobs);
+      for (var k = 0; k < B; k++) {
+        var h = new Uint8Array(res[k]), z = 0;
+        for (var q = 0; q < h.length; q++) { if (h[q] === 0) { z += 8; continue; } z += Math.clz32(h[q]) - 24; break; }
+        if (z >= bits) return String(n + k);
+      }
+      n += B;
+    }
+  }
+  $('ctForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var btn = $('ctSend'); btn.disabled = true; $('ctErr').textContent = '';
+    var body = { name: $('ctName').value, email: $('ctMail').value, message: $('ctMsg').value, website: $('ctHp').value, ft: K.ft };
+    if (!K.mock) {
+      btn.textContent = 'Prüfung läuft';
+      try {
+        var ch = await kapi('ct-challenge');
+        if (!ch.ok) { btn.disabled = false; btn.textContent = 'Senden'; $('ctErr').textContent = ch.err || 'Das hat nicht geklappt.'; return; }
+        body.pow = { c: ch.c, n: await powSolve(ch.c) };
+      } catch (x) { btn.disabled = false; btn.textContent = 'Senden'; $('ctErr').textContent = 'Dein Browser kann die Prüfung nicht ausführen. Bitte nutze https und einen aktuellen Browser.'; return; }
+      btn.textContent = 'Senden';
+    }
+    var j = await kapi('contact', body);
+    btn.disabled = false;
+    if (!j.ok) { $('ctErr').textContent = j.err || 'Das hat nicht geklappt.'; if (j.status === 400) await kProbe(); return; }
+    $('ctDlg').close(); $('ctMsg').value = ''; toast(j.msg);
+  });
+
+  var PROKEY = 'kartenbox-pro';
+  function proCached() { try { return !!localStorage.getItem(PROKEY); } catch (e) { return false; } }
+  function proInject(code) {
+    if (PRO.options) return true;
+    try { var sc = document.createElement('script'); sc.textContent = code; document.head.appendChild(sc); sc.remove(); } catch (e) { return false; }
+    return !!PRO.options;
+  }
+  function proApply() {
+    if (current === 'opts') renderOptions();
+    typeState(); syncPlayer(); try { updateUI(); } catch (e) {}
+  }
+  /* Nach der ersten Anmeldung auf diesem Gerät: einmal kurz zeigen, wo die zusätzlichen Einstellungen sind */
+  function proWelcome() {
+    var key = 'kartenbox-konto-hinweis';
+    try { if (localStorage.getItem(key)) return; localStorage.setItem(key, '1'); } catch (e) { return; }
+    setTimeout(function () {
+      confirmDlg('Dein Konto ist aktiv', 'Unter Optionen findest du jetzt Lernarten wie Antwort tippen, Wortbank und Vorlesen, dazu die Statistik. Damit lernst du gezielter.',
+        function () { if ($('accDlg').open) $('accDlg').close(); show('opts'); }, 'Zu den Optionen', false, 'Später');
+    }, 600);
+  }
+  async function kProLoad() {
+    if (PRO.options || K.proBusy) return;
+    K.proBusy = true;
+    try {
+      var code = '';
+      if (K.mock) code = PRO_EMBED || '';
+      else { var r = await fetch(kurl('pro'), { credentials: 'same-origin', cache: 'no-store', referrerPolicy: 'no-referrer' }); if (r.ok) code = await r.text(); }
+      if (code && proInject(code)) { try { localStorage.setItem(PROKEY, code); } catch (e) {} proApply(); proWelcome(); }
+    } catch (e) {}
+    K.proBusy = false;
+  }
+  function proDrop() {
+    var was = !!PRO.options;
+    try { localStorage.removeItem(PROKEY); } catch (e) {}
+    if (was) setTimeout(function () { location.reload(); }, 500);
+  }
+  function proBoot() {
+    var code = '';
+    if (PRO_EMBED && !CFG.konto.api && !CFG.konto.test) code = PRO_EMBED;
+    else try { code = localStorage.getItem(PROKEY) || ''; } catch (e) {}
+    if (code) proInject(code);
+  }
+  async function kStart() {
+    proBoot();
+    if (!CFG.konto.api && !CFG.konto.test) return;
+    var j = CFG.konto.api && location.protocol.indexOf('http') === 0 ? await kProbe() : null;
+    if (!j && CFG.konto.test) { K.mock = true; j = await kProbe(); }
+    if (!j) return;
+    K.on = true; K.probed = true; kUI();
+    var m = location.search.match(/[?&](verify|reset)=([a-f0-9]{64})/);
+    if (m) {
+      history.replaceState(null, '', location.pathname + location.hash);
+      if (m[1] === 'verify') {
+        var v = await kapi('verify', { token: m[2] });
+        openAcc('msg', v.ok ? v.msg : '', v.ok ? '' : v.err);
+      } else { K.resetTok = m[2]; openAcc('newpw'); }
+    }
+    if (K.user) kPull();
+  }
+
+  /* Startseite: je nach Einstellung start.seite immer, einmal am Tag, nur beim ersten Mal oder nie */
+  var LAND_KEY = 'kartenbox-start', landShown = false;
+  function landing() {
+    var m = CFG.start.seite;
+    if (m === 'aus') return;
+    if (/[?&](verify|reset)=/.test(location.search)) { landShown = true; return; }
+    var today = dayKey(), seen = '';
+    try { seen = localStorage.getItem(LAND_KEY) || ''; } catch (e) {}
+    if ((m === 'einmal' && seen) || (m === 'taeglich' && seen === today)) return;
+    try { localStorage.setItem(LAND_KEY, today); } catch (e) {}
+    landShown = true;
+    $('landing').showModal();
+  }
+  ['landGo', 'landGo2', 'landClose'].forEach(function (id) { $(id).addEventListener('click', function () { $('landing').close(); }); });
+  $('landDemo').addEventListener('click', function () { $('landing').close(); if (!S.demo) setDemo(true); });
+
+  /* Impressum und Datenschutz: Angaben stehen in einstellungen.js (anbieter), Texte werden nur als Text eingesetzt */
+  function openLegal(id) {
+    document.querySelectorAll('#' + id + ' .lf').forEach(function (s) {
+      var v = CFG.anbieter[s.dataset.a];
+      s.textContent = v || '[Angabe fehlt]';
+      s.classList.toggle('miss', !v);
+    });
+    $(id).showModal();
+    $(id).scrollTop = 0;
+  }
+  [['ftImp', 'impDlg'], ['landImp', 'impDlg'], ['ftDs', 'dsDlg'], ['landDs', 'dsDlg']].forEach(function (p) {
+    $(p[0]).addEventListener('click', function (e) { if (e.ctrlKey || e.metaKey || e.shiftKey || e.button) return; e.preventDefault(); openLegal(p[1]); });
+  });
+  document.querySelectorAll('dialog.legal [data-close]').forEach(function (b) {
+    b.addEventListener('click', function () { b.closest('dialog').close(); });
+  });
+  $('ftHome').addEventListener('click', function () { landShown = true; $('landing').showModal(); });
+
   /* Beim ersten Öffnen am Tag: kurzer Hinweis auf die Optionen (kein Muss) */
   var DAY_KEY = 'kartenbox-hinweis-tag';
   function dayHint() {
     var today = dayKey(), seen = '';
     try { seen = localStorage.getItem(DAY_KEY) || ''; } catch (e) { return; }
-    if (seen === today || document.querySelector('dialog[open]')) return;
+    if (landShown || seen === today || document.querySelector('dialog[open]')) return;
     try { localStorage.setItem(DAY_KEY, today); } catch (e) { return; }
     confirmDlg('Bereit für heute?', 'Ein Blick in die Optionen lohnt sich. Countdown, Vorlesen, Tagesziel und mehr machen das Lernen leichter. Du kannst aber auch gleich loslegen.', function () { show('opts'); }, 'Optionen ansehen', false, 'Gleich lernen');
   }
@@ -2341,4 +2698,6 @@
   rebuildStudy();
   renderFile();
   fileRestore();
+  landing();
+  kStart();
 })();

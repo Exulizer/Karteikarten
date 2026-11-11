@@ -1,3 +1,8 @@
+:root { --k: 1; }
+@media (min-width: 2200px) { :root { --k: 1.25; } }
+@media (min-width: 2800px) { :root { --k: 1.5; } }
+@media (min-width: 3400px) { :root { --k: 1.75; } }
+html { font-size: calc(100% * var(--k)); }   /* sehr große Bildschirme: Blatt, Schrift, Karten, Stifte und Notizzettel wachsen gemeinsam (Faktor --k, gleiche Stufen wie SK in kartenbox.js) */
 :root {
   --bg: #e6ecf1;
   --panel: #f6f9fb;
@@ -37,9 +42,9 @@ body {
   /* Millimeterpapier: feines Raster alle 16 px, kräftigere Linie alle 80 px */
   font-family: "Avenir Next", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; line-height: 1.5;
 }
-h1, h2, h3 { font-family: var(--slab); }
+h1, h2, h3, .h1 { font-family: var(--slab); }
 button, input, textarea { font: inherit; color: inherit; }
-.wrap { max-width: 860px; margin: 0 auto; padding: 16px 14px 60px; }
+.wrap { max-width: calc(860px * var(--k)); margin: 0 auto; padding: 16px 14px 60px; }
 header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
 .hright { display: flex; align-items: center; gap: 8px; flex: none; }
 .iconbtn { width: 38px; height: 38px; padding: 0; border-radius: 50%; border: 1.5px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; display: grid; place-items: center; }
@@ -49,17 +54,17 @@ header { display: flex; align-items: center; justify-content: space-between; gap
 .pill::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); margin-right: 7px; vertical-align: 1px; }
 .pill.ok::before { background: #2e7d4f; }
 .pill.warn::before { background: var(--accent); }
-h1 { font-size: 1.45rem; margin: 0; display: flex; align-items: center; gap: 10px; }
-h1 b { font-weight: 700; }
+.h1 { font-size: 1.45rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 10px; }
+.h1 b { font-weight: 700; }
 .logo { flex: none; filter: drop-shadow(0 3px 4px rgba(40, 28, 10, .25)); }
 .keys { margin: 12px 0 0; font-size: .9rem; display: none; justify-content: center; flex-wrap: wrap; gap: 6px 22px; }
 .keys kbd { font: inherit; font-weight: 700; border: 1.5px solid var(--line); border-radius: 6px; padding: 1px 7px; background: var(--panel); }
 @media (hover: hover) and (min-width: 760px) { .keys { display: flex; } }
 @media (max-width: 520px) {
-  h1 { font-size: 1.2rem; gap: 8px; }
+  .h1 { font-size: 1.2rem; gap: 8px; }
   .logo { width: 32px; height: 32px; }
   .hright { gap: 6px; }
-  .pill:not(.warn):not(.inst) { display: none; }
+  .pill:not(.warn):not(.inst):not(.acc) { display: none; }
 }
 
 .btn {
@@ -263,7 +268,7 @@ h1 b { font-weight: 700; }
 /* Formulare */
 .step-label { font-weight: 700; color: var(--accent); margin: 0 0 8px; }
 .lbl { font-weight: 700; margin: 0 0 8px; }
-textarea, input[type="text"], input[type="search"] {
+textarea, input[type="text"], input[type="search"], input[type="email"], input[type="password"] {
   width: 100%; background: var(--field); border: 1.5px solid var(--line); border-radius: 6px; padding: 12px 14px; font-size: 1.05rem;
 }
 textarea { min-height: 140px; resize: vertical; }
@@ -344,6 +349,9 @@ textarea { min-height: 140px; resize: vertical; }
 dialog { border: 1.5px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); width: min(92vw, 520px); padding: 22px; box-shadow: var(--shadow); }
 dialog[open] { animation: pop .25s cubic-bezier(.2, .8, .2, 1); }
 dialog::backdrop { background: rgba(10, 12, 20, .55); }
+/* Fenster ohne showModal (Konto, Kontakt, Abgleich): feste Mitte, eigener Hintergrund */
+dialog.nm { position: fixed; inset: 0; margin: auto; z-index: 90; max-height: calc(100dvh - 24px); overflow-y: auto; }
+.nmbg { position: fixed; inset: 0; z-index: 80; background: rgba(10, 12, 20, .55); }
 @keyframes pop { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
 dialog h2 { margin: 0 0 12px; font-size: 1.2rem; }
 dialog label { display: block; font-weight: 700; margin: 12px 0 6px; }
@@ -537,7 +545,7 @@ body::before {   /* eigene Ebene: ruckelfrei beim Scrollen und Animieren, auch a
 @keyframes namehop { 0% { transform: none; } 35% { transform: translateX(5px); } 100% { transform: none; } }
 @media (max-width: 360px) {   /* sehr schmale Handys: Kopfzeile enger, damit nichts über den Rand ragt */
   .brand { gap: 6px; padding-right: 2px; }
-  h1 { font-size: 1.05rem; }
+  .h1 { font-size: 1.05rem; }
   .logo { width: 28px; height: 28px; }
   header { gap: 6px; }
 }
@@ -545,10 +553,10 @@ body::before {   /* eigene Ebene: ruckelfrei beim Scrollen und Animieren, auch a
 /* Große Fenster: Zubehör auf dem Tisch. Links ein Notizzettel mit Handschrift, rechts ein Taschenrechner mit Pixelanzeige, beide schief hingelegt */
 .lcd { display: none; }
 @media (min-width: 1340px) {
-  .dock, .dock.free { left: -238px; right: -224px; bottom: -22px; }
-  .pen { height: 200px; top: 70px; right: calc(50% + 520px); }
-  .marker { height: 125px; top: 270px; right: calc(50% + 560px); }
-  .pencil { height: 215px; top: 110px; left: calc(50% + 510px); }
+  .dock, .dock.free { left: calc(-238px * var(--k)); right: calc(-224px * var(--k)); bottom: -22px; }
+  .pen { height: calc(200px * var(--k)); top: calc(70px * var(--k)); right: calc(50% + 520px * var(--k)); }
+  .marker { height: calc(125px * var(--k)); top: calc(270px * var(--k)); right: calc(50% + 560px * var(--k)); }
+  .pencil { height: calc(215px * var(--k)); top: calc(110px * var(--k)); left: calc(50% + 510px * var(--k)); }
 
   /* Notizzettel */
   .dock .steps {
@@ -575,11 +583,11 @@ body::before {   /* eigene Ebene: ruckelfrei beim Scrollen und Animieren, auch a
   .dock .steps li.done { opacity: 1; color: #55704f; }
   .dock .steps li.done::after { content: '✓'; position: absolute; right: 2px; top: 0; color: #2f8a4a; font-size: 20px; }
   .dock .steps li.now b { background: #2a3f9a; color: #fff9c4; }
-  .dock .steps { z-index: 0; isolation: isolate; }
+  .dock .steps { z-index: 0; isolation: isolate; zoom: var(--k); }
 
   /* Taschenrechner */
   .dock .controls {
-    position: relative; width: 184px; padding: 24px 12px 14px; gap: 8px; transform: rotate(4deg); transform-origin: 50% 100%; border-radius: 16px 16px 20px 20px;
+    position: relative; width: 184px; zoom: var(--k); padding: 24px 12px 14px; gap: 8px; transform: rotate(4deg); transform-origin: 50% 100%; border-radius: 16px 16px 20px 20px;
     background: linear-gradient(160deg, #e3e5ea, #b4b8c1 70%, #a3a8b2); box-shadow: 0 16px 26px rgba(0, 0, 0, .42), inset 0 2px 0 rgba(255, 255, 255, .7), inset 0 -3px 0 rgba(0, 0, 0, .18);
   }
   .dock .controls::before {   /* Solarzelle */
@@ -776,3 +784,180 @@ label.step-label { display: block; margin: 14px 0 6px; }
 .stdemo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0 0 12px; padding: 8px 12px; border-radius: 8px; background: #fff3a8; color: #2a2a45; font-size: .9rem; border: 1.5px dashed #c9a800; }
 .stdemo b { font-variant-numeric: tabular-nums; }
 .stdemo .btn { margin-left: auto; padding: 4px 12px; font-size: .85rem; }
+
+/* Startseite: Blatt Millimeterpapier auf dem Holztisch */
+dialog.landing { position: fixed; inset: 0; width: 100%; max-width: none; height: 100%; max-height: none; margin: 0; padding: 0 0 40px; border: 0; border-radius: 0; box-shadow: none; overflow-y: auto; color: var(--ink);
+  background: linear-gradient(var(--wood-a), var(--wood-b)); }
+dialog.landing[open] { animation: none; }
+.ltop { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 16px; background: rgba(20, 14, 8, .72); color: #f3e6cf; font-family: var(--slab); font-weight: 700; }
+.ltop .btn { padding: 5px 14px; color: #f3e6cf; border-color: #f3e6cf; }
+.ltop .btn:hover { background: #f3e6cf; color: #2a2619; }
+.lsheet { max-width: 860px; margin: 26px auto 0; padding: 28px 28px 34px; border-radius: 12px; border: 1px solid var(--pad-edge); box-shadow: 0 34px 60px -26px rgba(0, 0, 0, .6);
+  background-color: var(--bg);
+  background-image: linear-gradient(var(--grid-b) 1px, transparent 1px), linear-gradient(90deg, var(--grid-b) 1px, transparent 1px), linear-gradient(var(--grid-a) 1px, transparent 1px), linear-gradient(90deg, var(--grid-a) 1px, transparent 1px);
+  background-size: 80px 80px, 80px 80px, 16px 16px, 16px 16px; }
+.lhero { text-align: center; padding: 10px 0 18px; }
+.lhero h1 { margin: 4px 0 6px; font-size: 2.4rem; letter-spacing: .02em; }
+.lhero h1 span { display: block; margin-top: 4px; font-size: 1.15rem; letter-spacing: 0; font-weight: 600; }
+/* Weiterführende Links: je ein Streifen Klebeband, leicht schräg, mit gezacktem Rand */
+.lmore { margin: 18px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 14px; color: var(--muted); font-size: .95rem; }
+.lmore .lmt { margin-right: 2px; }
+.lmore a {
+  display: inline-block; padding: 8px 18px; min-height: 36px; box-sizing: border-box; text-decoration: none; white-space: nowrap;
+  background: rgba(233, 219, 176, .94); color: #3a2f18; box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+  font: 700 .95rem / 1.2 "Segoe Print", "Bradley Hand", "Chalkboard SE", "Comic Sans MS", cursive;
+  transform: rotate(-2deg); transition: transform .15s ease, box-shadow .15s ease;
+  clip-path: polygon(0 0, 3% 12%, 0 25%, 3% 38%, 0 50%, 3% 62%, 0 75%, 3% 88%, 0 100%, 100% 100%, 97% 88%, 100% 75%, 97% 62%, 100% 50%, 97% 38%, 100% 25%, 97% 12%, 100% 0);
+}
+.lmore a:nth-of-type(even) { transform: rotate(1.5deg); }
+.lmore a:nth-of-type(3n) { transform: rotate(-1deg); }
+.lmore a:hover { transform: rotate(0deg) translateY(-2px); }
+.lmore a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; clip-path: none; }
+@media (prefers-reduced-motion: reduce) { .lmore a { transition: none; } }
+.nojs { max-width: 46rem; margin: 20px auto; padding: 14px 18px; background: var(--panel); border: 1.5px solid var(--line); border-radius: 8px; }
+.nojs-t { margin: 0 0 6px; font: 700 1.45rem var(--slab); }
+.llead { margin: 0 auto 16px; max-width: 34ch; font-size: 1.2rem; line-height: 1.5; font-family: var(--font); }
+.lhero .lrow { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.lsmall { margin: 12px 0 0; color: var(--muted); font-size: .95rem; }
+.lsec { padding: 18px 0 6px; }
+.lh { margin: 0 0 12px; font-size: 1.3rem; display: inline-block; padding-bottom: 2px; border-bottom: 3px solid #d4574a; }
+.lsteps, .lfeats { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; grid-template-columns: repeat(3, 1fr); }
+.lstep { --hd: 46px; --lh: 28px; color: #2a2619; border: 1.5px solid #2a2619; border-radius: 6px; padding: 0 16px 10px; box-shadow: var(--shadow); font-family: var(--font); }
+.lstep:nth-child(1) { transform: rotate(-1deg); } .lstep:nth-child(2) { transform: rotate(.7deg); } .lstep:nth-child(3) { transform: rotate(-.5deg); }
+.lstep h3 { margin: 0; height: var(--hd); line-height: var(--hd); font-size: 1.05rem; }
+.lstep p { margin: 0; line-height: var(--lh); font-size: .98rem; }
+.lnum { position: absolute; }
+.lstep { position: relative; }
+.lnum { right: 12px; top: 8px; width: 28px; height: 28px; border-radius: 50%; background: #d4574a; color: #fff; font-family: var(--slab); font-weight: 700; display: grid; place-items: center; }
+.feat { background: var(--panel); border: 1.5px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+.feat h3 { margin: 6px 0 4px; font-size: 1.05rem; }
+.feat p { margin: 0; color: var(--muted); line-height: 1.45; }
+.fi { width: 26px; height: 26px; fill: var(--accent); display: block; }
+.lalso { margin: 16px 0 0; line-height: 1.5; }
+.lnote { background: var(--panel); border: 1.5px solid var(--line); border-left: 6px solid #d4574a; border-radius: 8px; padding: 16px 18px; margin-top: 20px; }
+.lnote p { margin: 0 0 8px; line-height: 1.5; } .lnote p:last-child { margin: 0; font-weight: 700; }
+.lfaq { margin: 0; } .lfaq dt { font-weight: 700; margin-top: 12px; } .lfaq dd { margin: 2px 0 0; color: var(--muted); }
+.lend { margin-top: 20px; padding-top: 26px; border-top: 1.5px dashed var(--line); }
+@media (max-width: 760px) { .lsteps, .lfeats { grid-template-columns: 1fr; } .lsheet { margin: 12px 8px 0; padding: 18px 14px 24px; } .lhero h1 { font-size: 2rem; } .lstep { transform: none !important; } }
+@media (min-width: 761px) and (max-width: 980px) { .lfeats { grid-template-columns: repeat(2, 1fr); } }
+
+/* Fußzeile, Rechtstexte */
+.foot { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 18px; margin-top: 26px; padding-top: 12px; border-top: 1.5px dashed var(--line); }
+.flink { background: none; border: 0; padding: 4px 2px; cursor: pointer; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+.flink:hover { color: var(--ink); }
+.lfoot { margin: 16px 0 0; display: flex; justify-content: center; gap: 18px; }
+dialog.legal { width: min(92vw, 620px); max-height: 86vh; overflow-y: auto; }
+dialog.legal h3 { margin: 16px 0 4px; font-size: 1rem; }
+dialog.legal p { margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
+dialog.legal .lsub { color: var(--muted); margin-bottom: 8px; }
+dialog.legal .row { margin-top: 18px; }
+.lf.miss { background: #ffd9d4; color: #7a1c10; padding: 0 5px; border-radius: 3px; font-weight: 700; }
+.lbadge { font: 700 .72rem/1 system-ui, sans-serif; background: #f2dd7a; color: #2a2619; border: 1.5px solid #2a2619; border-radius: 4px; padding: 3px 7px; vertical-align: middle; margin-left: 6px; }
+.lkonto p { font-weight: 400 !important; }
+
+/* Konto */
+.pill.acc.on::before { background: #2e7d4f; }
+.pill.acc.warn::before { background: #c07a00; }
+dialog.acc, #ctDlg, #syncDlg { width: min(92vw, 440px); }
+dialog.acc label, #ctDlg label { display: block; font-weight: 700; margin: 12px 0 4px; }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.accok { margin: 0 0 8px; color: #2e7d4f; font-weight: 700; }
+:root[data-theme="dark"] .accok { color: #7bd49a; }
+.accok:empty, .acc .err:empty, #ctDlg .err:empty { display: none; }
+.acchint { margin: 12px 0 0; line-height: 1.45; }
+.acclinks { margin: 10px 0 0; }
+.accmail { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+.accstate { margin: 4px 0 0; color: var(--muted); }
+.accclose { margin-top: 18px; }
+.pill.acc { display: inline-flex; align-items: center; }
+.pill.acc svg { display: none; fill: currentColor; }
+@media (max-width: 520px) {
+  .pill.acc { width: 38px; height: 38px; padding: 0; justify-content: center; border-radius: 50%; }
+  .pill.acc .lbl, .pill.acc::before { display: none; }
+  .pill.acc svg { display: block; width: 16px; height: 16px; }
+  .pill.acc.on { border-color: #2e7d4f; }
+}
+.accwipe { display: flex !important; align-items: center; gap: 10px; font-weight: 400 !important; margin: 14px 0 0 !important; line-height: 1.4; cursor: pointer; }
+.accwipe input { width: 20px; height: 20px; flex: none; accent-color: var(--accent); }
+.acctest { margin: 0 0 10px; padding: 8px 10px; border: 1.5px dashed #c07a00; border-radius: 6px; background: #fff4d6; color: #2a2619; line-height: 1.4; }
+
+/* Zusatzoptionen: bis zur Anmeldung verschwommen und gekürzt */
+.lockbox.locked { position: relative; max-height: 300px; overflow: hidden; border-radius: 8px; }
+.lockbox.locked .lockin { filter: blur(6px); opacity: .55; pointer-events: none; user-select: none; }
+.lockov { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; background: linear-gradient(to bottom, transparent, var(--bg) 92%); }
+.lockcard { background: var(--panel); border: 1.5px solid var(--line); border-radius: 8px; padding: 14px 16px; max-width: 420px; text-align: center; box-shadow: 0 4px 18px rgba(0,0,0,.15); }
+.lockcard p { margin: 6px 0 10px; }
+.lockcard .tools { justify-content: center; }
+
+.optsep { margin: 26px 0 12px; padding-top: 12px; border-top: 1.5px dashed var(--line); font: 600 .85rem/1 var(--slab); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+/* Lücke-Knopf */
+.clozebar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 8px 0 0; }
+.clozebar span { font-size: 1rem; color: var(--ink); }
+.clozeprev { margin: 8px 0 0; padding: 8px 12px; border: 1.5px dashed var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); }
+.txt mark.gap { color: inherit; font-weight: 700; padding: 0 .1em; border-radius: 2px; background: linear-gradient(transparent 50%, rgba(70, 170, 90, .5) 50%); }
+
+/* Wortbank (Lückentext) */
+.bankrow { margin: 0 0 10px; }
+.bankrow[hidden] { display: none; }
+.bankrow #bankInfo { margin: 0 0 8px; font-weight: 700; }
+.bankrow #bankInfo.g2 { color: var(--good); }
+.bankrow #bankInfo.g1 { color: var(--accent); }
+.bankwords { display: flex; flex-wrap: wrap; gap: 10px; }
+.bankchip { min-height: 44px; padding: 8px 18px; border: 1.5px solid #2a2619; border-radius: 8px; background: #fbee9a; color: #2a2619; font: 700 1.05rem var(--font); cursor: pointer; box-shadow: 0 4px 0 rgba(0, 0, 0, .25); transition: transform .12s; }
+.bankchip:hover:not(:disabled) { transform: translateY(-2px); }
+.bankchip:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0, 0, 0, .25); }
+.bankchip:disabled { opacity: .45; cursor: default; box-shadow: none; }
+.bankchip.used { display: none; }
+.bankchip.bad { animation: bankshake .35s; background: #f3b3aa; }
+.txt .wbfill { font-weight: 700; padding: 0 .1em; border-radius: 2px; background: linear-gradient(transparent 50%, rgba(70, 170, 90, .5) 50%); }
+@keyframes bankshake { 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
+@media (prefers-reduced-motion: reduce) { .bankchip, .bankchip.bad { animation: none; transition: none; } }
+@media (min-width: 900px) {   /* Am Computer liegt die Wortbank unter den Zetteln, in eigenem Platz, nichts überdeckt */
+  #view-study:has(#bankRow:not([hidden])) { margin-bottom: 110px; }
+  .dock .bankrow { position: absolute; left: 0; right: 0; top: 100%; margin: 14px 0 0; text-align: center; }
+  .dock .bankrow .bankwords { justify-content: center; }
+}
+
+/* Passwort anzeigen: Augen-Knopf NEBEN dem Feld. Nicht im Feld, damit Passwortmanager ihr Symbol am rechten Feldrand ohne Überlappung zeigen können. */
+.pwbox { display: flex; align-items: stretch; gap: 8px; }
+.pwbox input { flex: 1 1 auto; min-width: 0; width: auto; }
+.pweye { flex: 0 0 48px; width: 48px; min-height: 44px; display: flex; align-items: center; justify-content: center; padding: 0;
+  background: var(--panel); border: 1.5px solid var(--line); border-radius: 6px; color: var(--muted); cursor: pointer; }
+.pweye:hover { color: var(--ink); border-color: var(--ink); }
+.pweye:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.pweye[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+
+/* Konto-Dialog: Bereiche getrennt, Löschen ganz unten und abgesetzt */
+dialog.acc .accsec { margin-top: 14px; padding-top: 4px; border-top: 1px solid var(--line); }
+dialog.acc .accsech { margin: 0 0 4px; font-weight: 700; color: var(--muted); font-size: .92rem; }
+dialog.acc .accdanger { margin-top: 26px; padding-top: 12px; border-top: 2px dashed #b3261e; }
+:root[data-theme="dark"] dialog.acc .accdanger { border-top-color: #ff8a80; }
+dialog.acc .accdanger .accsech { color: #b3261e; }
+:root[data-theme="dark"] dialog.acc .accdanger .accsech { color: #ff8a80; }
+
+/* Fußzeile: Links als Karteireiter, passend zur Karte (gelb, roter Kopf) */
+.foot { border-top: 0; padding-top: 6px; gap: 14px 16px; }
+.foot .flink, .lfoot .flink { display: inline-block; min-height: 44px; padding: 9px 18px 6px; border: 1.5px solid #2a2619; border-top: 4px solid #d4574a; border-radius: 6px 6px 3px 3px;
+  background: #fbee9a; color: #2a2619; text-decoration: none; font: 600 .95rem/1.4 system-ui, sans-serif; box-shadow: 0 8px 10px -8px rgba(0,0,0,.6); transition: transform .2s; cursor: pointer; }
+.foot .flink:nth-child(odd), .lfoot .flink:nth-child(odd) { transform: rotate(-1deg); }
+.foot .flink:nth-child(even), .lfoot .flink:nth-child(even) { transform: rotate(.8deg); }
+.foot .flink:hover, .lfoot .flink:hover { transform: rotate(0) translateY(-2px); color: #2a2619; text-decoration: underline; text-underline-offset: 3px; }
+.foot .flink:focus-visible, .lfoot .flink:focus-visible { outline: 3px solid var(--accent, #1d3fc4); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .foot .flink, .lfoot .flink { transition: none; } }
+.lfoot { margin: 30px 0 0; flex-wrap: wrap; gap: 14px 16px; }
+
+/* Konto-Dialog auf niedrigen Fenstern enger, damit möglichst nichts scrollen muss */
+@media (max-height: 760px) {
+  dialog.acc { padding: 14px 16px; }
+  dialog.acc h2 { margin: 0 0 8px; font-size: 1.15rem; }
+  dialog.acc .row { margin-top: 10px; }
+  dialog.acc .accsec { margin-top: 10px; }
+  dialog.acc .accdanger { margin-top: 16px; padding-top: 10px; }
+  dialog.acc .acchint { font-size: .92rem; margin: 6px 0 0; }
+  dialog.acc .accwipe { margin: 10px 0 0 !important; }
+}
+
+/* Fußzeile liegt unter dem Blatt auf dem Schreibtisch, nicht im Blatt */
+body > .foot { position: relative; z-index: 1; max-width: calc(860px * var(--k)); margin: 0 auto; padding: 26px 14px 48px; gap: 16px 18px; }
+@media (max-width: 600px) { body > .foot { padding-top: 22px; } }
