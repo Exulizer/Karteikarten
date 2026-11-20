@@ -1,6 +1,6 @@
-<p align="center"><img src="kartenbox-banner.png" alt="Kartenbox: Karteikarten in einer einzigen HTML-Datei" width="100%"></p>
+<p align="center"><img src="kartenbox-banner.png" alt="KarteiDeck: Karteikarten in einer einzigen HTML-Datei" width="100%"></p>
 
-# Kartenbox
+# KarteiDeck
 
 Karteikarten-App als **eine einzige HTML-Datei**. Läuft komplett offline, ohne Server, ohne Installation, ohne Konto. Datei öffnen, lernen.
 
@@ -22,10 +22,11 @@ Der Schalter **Demo** zeigt die App mit Beispielkarten.
 - Lernarten: **Lückentext**, **Antwort tippen**, **rückwärts**, **Prüfung mit Note**, **Vorlesen**
 - **Bilder**, **Tags** und Suche
 - Import aus **CSV, Anki und Quizlet**, Export als CSV, **Drucken**
-- **Statistik** mit Kalender und Stempeln
+- **Fortschritt** (Tag, Monat, Jahr) mit Kalender, Stempeln und Tagesziel-Siegel
+- **Deutsch und Englisch**, umschaltbar oben neben „Demo“
 - Karten **speichern, laden und teilen** (Datei per E-Mail, Discord …)
 - Hilfe mit FAQ direkt in der App
-- Hell und Dunkel, schmale Ansicht für Handys
+- Hell und Dunkel, Handy-Ansicht mit fünf Tabs
 
 ## Daten
 
@@ -41,6 +42,16 @@ Diese Dateien gehören in denselben Ordner wie `karteikarten.html`. Updates übe
 ## Installieren (optional)
 
 Als App im Browser installieren geht nur, wenn die Seite über `http(s)` geöffnet wird, nicht als lokale Datei. Die Datei selbst läuft immer, auch ohne Installation.
+
+## Konto und Abgleich (optional, braucht PHP)
+
+Ohne Server läuft alles wie bisher lokal. Mit PHP 8.1 oder neuer (und `api/` neben der HTML) kann man sich registrieren. Dann liegen Karten, Lernstand und Optionen zusätzlich im Konto und gleichen sich zwischen Geräten ab.
+
+- Einschalten: in `einstellungen.js` bei `konto.api` den Pfad `api/index.php` eintragen (Standard). Leer lassen schaltet die Funktion ab. Es funktioniert nur über http(s), nicht aus einer lokalen Datei.
+- Lokal testen: `php -S 127.0.0.1:8000` im App-Ordner, dann `http://127.0.0.1:8000/karteikarten.html` öffnen. Mails stehen dann in `api/data/mail.log`.
+- Ohne Datenbank: Standard ist der Datei-Speicher (`api/data/store.json`) nur für Tests. Für den Betrieb `api/schema.sql` einspielen und in `api/config.local.php` (Vorlage: `config.local.php.example`) `store` auf `pdo` stellen.
+- Schutz: Passwörter mit Argon2id, Sitzungs-Cookie mit `HttpOnly`, `SameSite` und `Secure` (bei https), CSRF-Token, Herkunftsprüfung, Rate-Limit für Anmeldung, Registrierung, Passwort-Reset und Kontakt (gespeichert wird nur ein Hash der IP), E-Mail-Bestätigung, Honigtopf im Kontaktformular, Mail-Header-Schutz.
+- Vor dem Start: `anbieter` in `einstellungen.js` ausfüllen (Impressum, Datenschutz), `site_url`, `mail_from` und `contact_to` setzen, `.htaccess` mit Header prüfen (securityheaders.com), HTTPS erzwingen.
 
 ## Updates
 

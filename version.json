@@ -1,23 +1,23 @@
 {
-  "version": "1.2.0",
-  "hinweis": "Wortbank bei Lückentext, Import mit Formatprüfung (CSV, TXT, JSON), Drehen und Fächer auf der Vorabseite, Skalierung auf großen Bildschirmen.",
+  "version": "1.4.0",
+  "hinweis": "Handy-Navigation mit fünf Tabs, Sprachknopf oben, Demo im Fortschritt auch mit eigenen Daten, neue Seite „Was ist neu“. Komplett auf Englisch.",
   "files": [
     {
       "pfad": "karteikarten.html",
-      "sha256": "d0b0198e37eda0dade8ac3d364ca314261e3a67b64968149240330801b6eea39",
-      "groesse": 220498,
+      "sha256": "b72876518074a6a54de838bafa12e1a5825b8b9697307e6e9902fbd57faa7eb3",
+      "groesse": 344383,
       "optional": false
     },
     {
       "pfad": "sw.js",
-      "sha256": "8c2dfe776779ddef3ab5c47b66ef3e41fe789375e78bbeb647a30d3eece0b30e",
-      "groesse": 1452,
+      "sha256": "b7fd31ce23dc36521b65354aaee1761056f99bfd545ec4b9567faff880524321",
+      "groesse": 2229,
       "optional": true
     },
     {
       "pfad": "manifest.webmanifest",
-      "sha256": "50e055407bacd2712638adc6e60f8b59160105c3b3c8b503574cbd042f9c43fe",
-      "groesse": 589,
+      "sha256": "476baf83b441c2fac01de21f3c9d030a7d87a20643c3f77bec138dd4545d8ea3",
+      "groesse": 572,
       "optional": true
     },
     {

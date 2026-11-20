@@ -1,5 +1,19 @@
 # Änderungen
 
+## 1.4.0 (2026-11-20)
+- Handy (bis 600 px): Die Leiste hat fünf Tabs. Nur der aktive zeigt seinen Namen und klappt animiert auf, die Tippflächen sind 48 px hoch. Rubriken liegen als Umschalter „Karten | Rubriken“ im Karten-Tab (`.catseg`, `syncTabs()` in `kartenbox.js`). Am Desktop und Tablet bleibt die Leiste wie bisher.
+- Sprachknopf oben neben „Demo“ (`#hdLang`, EN/DE). Der Wechsel lädt neu, bleibt aber auf dem aktuellen Tab, öffnet die Startseite nicht und blendet kurz aus und ein. Ein durchsichtiger Fahnenverlauf läuft einmal pro Minute schräg durch den Knopf. Die Sprachknöpfe im Fußbereich entfallen.
+- Fortschritt: „Demo ansehen (2 Minuten)“ gibt es auch mit eigenen Daten, „Demo beenden“ und „Zu meinem Fortschritt“ führen zurück. In der lokalen Datei ohne Konto-System ist der Fortschritt frei, die Konto-Info erscheint nur online.
+- Optionen: Gruppenüberschriften mit Farbbalken, größerer Schrift und Trennlinie.
+- Neue Seite „Was ist neu“ (`neu.html`, englisch `en/whats-new.html`). Die Einträge stehen in `quelle/neu.json` (Deutsch und Englisch), Link im Footer der App und der Themenseiten, in Sitemap und `llms.txt`. Nur online.
+- Fortschritt-Titel, Monate und Wochentage in der englischen Fassung auf Englisch.
+
+## 1.3.0 (2026-11-19)
+- Neu: Tab „Fortschritt“ ersetzt die Statistik (nur mit Konto, Code in `quelle/pro.js`). Tag, Monat und Jahr mit Pfeilen, Tagesziel-Balken mit Siegel, Kalender mit Stempeln, Jahresbalken, Aufstellung nach Rubriken mit „gemeistert“. Neues Kartenfeld `mst` (Zeitpunkt, wann eine Karte Fach 5 erreicht). Ohne Konto eine Info, mit leerem Lernprotokoll eine Demo.
+- Tagesziel-Leiste auf der Lernen-Seite.
+- Komplett auf Englisch: Die App übersetzt sich über ein Wörterbuch (`quelle/en.json`, eingebettet beim Bauen), gewählt per `?lang=en` oder Sprachknopf. Eigene Karten bleiben unübersetzt. Englische Seiten liegen in `en/` (Start, fünf Themenseiten, Hilfe, Impressum, Datenschutz, Kontakt) und werden von `quelle/seiten_en.py` gebaut. hreflang-Verweise und Sitemap enthalten beide Sprachen. Die englischen Rechtstexte sind eine Übersetzung zur Orientierung, es gilt die deutsche Fassung.
+- Kontaktformular: Meldungen auch auf Englisch (`data-lang="en"`).
+
 ## 1.2.0 (2026-11-11)
 - Import: Dateiformat wird vor dem Lesen geprüft (nur CSV, TSV, TXT, JSON, höchstens 5 MB). Anki-Pakete (.apkg), leere Dateien und Binärdateien werden mit einem klaren Hinweis abgelehnt.
 - Große Bildschirme (ab 2200 px) skalieren Blatt, Karten, Stifte und Zubehör mit.
