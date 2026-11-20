@@ -9,6 +9,12 @@ css = (d/'kartenbox.css').read_text(encoding='utf8')
 js = (d/'kartenbox.js').read_text(encoding='utf8')
 assert '</script' not in js.lower() and '</style' not in css.lower()
 assert js.count("'__VERSION__'") == 1
+assert js.count('null /*EN_DICT*/') == 1
+def _endict():   # Muster: längere zuerst, damit die genaueren gewinnen
+    e = json.loads((d/'en.json').read_text(encoding='utf8'))
+    e['pat'].sort(key=lambda p: -len(p[0]))
+    return e
+js = js.replace('null /*EN_DICT*/', json.dumps(_endict(), ensure_ascii=False, separators=(',', ':')).replace('</', '<\\/'))
 js = js.replace("'__VERSION__'", "'" + ver['version'] + "'")
 # Zusatzfunktionen: liegen als api/inc/pro.js auf dem Server und werden nur nach der Anmeldung ausgeliefert.
 # In die HTML kommen sie nur im Testmodus (konto.test) oder ohne Konto-System (keine api), sonst gäbe es dort keine Anmeldung.
@@ -25,17 +31,27 @@ print('Zusatzfunktionen:', 'in der HTML eingebettet (Test/ohne Konto)' if _embed
 _url = re.search(r'\bseite\s*:\s*\{[^}]*?\burl\s*:\s*"([^"]*)"', _es)
 _url = (_url.group(1).strip().rstrip('/') if _url else '')
 _ld = {'@context': 'https://schema.org', '@type': 'WebApplication', 'name': 'KarteiDeck', 'applicationCategory': 'EducationalApplication', 'operatingSystem': 'Alle Geräte mit Browser', 'inLanguage': 'de',
-       'description': 'Karteikarten online lernen und erstellen: Karteikasten nach Leitner-System, Lückentext, Prüfung und Statistik. Kostenlos, ohne Werbung, auch offline.',
-       'featureList': ['Karteikarten erstellen und bearbeiten', 'Karteikasten nach Leitner-System', 'Lückentext', 'Prüfungsmodus', 'Lernstatistik', 'Läuft offline'],
+       'description': 'Karteikarten online lernen und erstellen: Karteikasten nach Leitner-System, Lückentext, Prüfung und Fortschritt. Kostenlos, ohne Werbung, auch offline.',
+       'featureList': ['Karteikarten erstellen und bearbeiten', 'Karteikasten nach Leitner-System', 'Lückentext', 'Prüfungsmodus', 'Fortschritt nach Tag, Monat und Jahr', 'Läuft offline'],
        'offers': {'@type': 'Offer', 'price': '0', 'priceCurrency': 'EUR'}}
 _seo = ''
 import sys; sys.path.insert(0, str(d)); import seiten
 if _url:
     _ld['url'] = _url + '/'
     _seo = ('<link rel="canonical" href="%s/">\n<meta property="og:url" content="%s/">\n<meta property="og:image" content="%s/vorschau.png">\n<meta property="og:image:width" content="1200">\n<meta property="og:image:height" content="630">\n'
-            '<meta property="og:image:alt" content="KarteiDeck: Karteikarten online lernen">\n<meta name="twitter:image" content="%s/vorschau.png">\n') % (_url, _url, _url, _url)
+            '<meta property="og:image:alt" content="KarteiDeck: Karteikarten online lernen">\n<meta name="twitter:image" content="%s/vorschau.png">\n'
+            '<link rel="alternate" hreflang="de" href="%s/">\n<link rel="alternate" hreflang="en" href="%s/en/">\n<link rel="alternate" hreflang="x-default" href="%s/">\n') % (_url, _url, _url, _url, _url, _url, _url)
     import seiten
     (root/'sitemap.xml').write_text(seiten.sitemap(_url), encoding='utf8')
+    # llms.txt: kurze, saubere Übersicht für KI-Suchen und Antwortsysteme (Fakten, keine Werbung)
+    _l = ['# KarteiDeck', '', '> Karteikarten online lernen und selbst erstellen. Kostenlos, ohne Werbung und ohne Anmeldung nutzbar, läuft auch offline im Browser. Die Karten bleiben im Browser. Lernen nach dem Leitner-System (Karteikasten mit Fächern), Lückentext, Antwort tippen, Prüfung mit Note, Import aus CSV, Anki und Quizlet. Mit kostenlosem Konto lassen sich Karten zwischen Geräten abgleichen.', '', '## Seiten', '', '- [KarteiDeck – App und Startseite](%s/): Karteikarten schreiben und lernen' % _url]
+    _l += ['- [%s](%s/%s.html): %s' % (_p['nav'], _url, _p['slug'], _p['desc']) for _p in seiten.PAGES + [seiten.HILFE]]
+    import seiten_en
+    _l += ['- [Was ist neu](%s/neu.html): Neuerungen aller Versionen' % _url]
+    _l += ['', '## English', '', '- [KarteiDeck – English home](%s/en/): create and study flashcards online, free, offline, no signup' % _url]
+    _l += ['- [%s](%s/en/%s.html): %s' % (_p['nav'], _url, seiten_en.SLUG[_p['de']], _p['desc']) for _p in seiten_en.PAGES]
+    _l += ['', '## Gut zu wissen', '', '- Anbieter und Kontakt: siehe [Impressum](%s/impressum.html)' % _url, '- Datenschutz: [Datenschutzerklärung](%s/datenschutz.html)' % _url, '- Quellcode (MIT-Lizenz): https://github.com/Exulizer/Karteikarten', '']
+    (root/'llms.txt').write_text('\n'.join(_l), encoding='utf8')
 import shutil; shutil.copyfile(d/'kontakt.js', root/'kontakt.js')
 (root/'robots.txt').write_text('User-agent: *\nAllow: /\nDisallow: /api/\n' + ('Sitemap: %s/sitemap.xml\n' % _url if _url else ''), encoding='utf8')
 _seo += '<script type="application/ld+json">' + json.dumps(_ld, ensure_ascii=False).replace('</', '<\\/') + '</script>'
@@ -44,9 +60,29 @@ def _anb(k):
     v = re.search(r'\b' + k + r'\s*:\s*"([^"]*)"', m.group(1)) if m else None
     return v.group(1) if v else ''
 _konto_on = bool(re.search(r'\bapi\s*:\s*"[^"]+"', _es))
+_anbd = {k: _anb(k) for k in ['name', 'strasse', 'ort', 'email', 'hoster']}
+_apiurl = (re.search(r'\bapi\s*:\s*"([^"]+)"', _es) or [None, ''])[1]
+import seiten_en
+_kt_en = seiten_en.kontakt(_apiurl, _anbd.get('email', '')) if (_konto_on and _apiurl) else None
+(root/'en').mkdir(exist_ok=True)
+_n_en, _miss = seiten_en.build(root, h, _url, _anbd, _konto_on, _apiurl, seiten, _kt_en)
+print('Englische Seiten:', _n_en, 'Dateien in en/')
+assert not _miss, 'Englische Rechtstexte unvollständig: %s' % _miss[:5]
 print('Seiten:', seiten.build_pages(root, h, _url, {k: _anb(k) for k in ['name', 'strasse', 'ort', 'email', 'hoster']}, _konto_on, (re.search(r'\bapi\s*:\s*"([^"]+)"', _es) or [None, ''])[1]), 'Dateien (Impressum, Datenschutz, Themenseiten)')
 import vorab
 print('Bald-online-Seite:', vorab.build(root, d, _url, {k: _anb(k) for k in ['name', 'strasse', 'ort', 'email', 'hoster']}), 'Dateien in vorab/')
+# Online-Version (seite.url gesetzt): Die Hilfe der App entfällt, ihre Inhalte stehen als FAQ auf den Themenseiten (seiten.FAQ).
+# Die lokale Datei ohne Adresse behält die Hilfe, dort gibt es keine Themenseiten.
+if _url:
+    _t0 = len(h)
+    h = re.sub(r'[ \t]*<button class="tab"[^>]*data-view="help".*?</button>\n?', '', h, count=1, flags=re.S)
+    h = re.sub(r'[ \t]*<!-- Hilfe -->\n\s*<section class="view" id="view-help">.*?</section>\n?', '', h, count=1, flags=re.S)
+    assert 'view-help' not in h and 'data-view="help"' not in h, 'Hilfe konnte nicht entfernt werden'
+    _f = '<button class="flink" id="ftHome" type="button">Startseite</button>\n'
+    assert _f in h
+    h = h.replace(_f, _f + '  <a class="flink" id="ftHilfe" href="hilfe.html">Hilfe</a>\n  <a class="flink" id="ftNeu" href="neu.html">Was ist neu</a>\n', 1)
+    h = h.replace('<script src="karteikarten.js"></script>\n', '', 1)   # lokale Sicherungsdatei gibt es online nicht (sonst 404 in der Konsole)
+    print('Online-Version: Hilfe entfernt (%d Zeichen)' % (_t0 - len(h)))
 assert '<!--SEO-->' in h
 h = h.replace('<!--SEO-->', _seo)
 h = h.replace('content="__VERSION__"', 'content="' + ver['version'] + '"')
@@ -70,8 +106,14 @@ def _mini_html(t):   # Nur Kommentare und Einrückung, Inhalt von script, style,
 _n0 = len(css) + len(js)
 css, js = _esb(css, 'css'), _esb(js, 'js')
 h = h.replace('<link rel="stylesheet" href="kartenbox.css">', '<style>\n'+css+'</style>')
-h = h.replace('<script src="kartenbox.js"></script>', '<script>\n'+js+'</script>')
+_ext = bool(_url) and not _embed   # online: Skript als eigene Datei, damit die CSP ohne 'unsafe-inline' für Skripte auskommt
+if _ext:
+    (root/'app.js').write_text(js, encoding='utf8')
+    h = h.replace('<script src="kartenbox.js"></script>', '<script src="app.js?v=%s"></script>' % hashlib.sha256(js.encode('utf8')).hexdigest()[:10])
+else:
+    h = h.replace('<script src="kartenbox.js"></script>', '<script>\n'+js+'</script>')
 h = _mini_html(h)
+if _ext: assert not re.search(r'<script(?![^>]*\b(src=|type="application/ld\+json"))', h), 'Inline-Skript gefunden, die CSP würde es blocken'
 print('Verkleinert: CSS+JS', _n0 // 1024, 'KB ->', (len(css) + len(js)) // 1024, 'KB')
 (root/'karteikarten.html').write_text(h, encoding='utf8')
 # Dateien, die ein Update ersetzen darf. Nutzerdaten (karteikarten.json, karteikarten.js, einstellungen.js) gehören nie dazu.

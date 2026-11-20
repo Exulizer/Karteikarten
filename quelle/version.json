@@ -1,4 +1,4 @@
 {
-  "version": "1.2.0",
-  "hinweis": "Wortbank bei Lückentext, Import mit Formatprüfung (CSV, TXT, JSON), Drehen und Fächer auf der Vorabseite, Skalierung auf großen Bildschirmen."
+  "version": "1.4.0",
+  "hinweis": "Handy-Navigation mit fünf Tabs, Sprachknopf oben, Demo im Fortschritt auch mit eigenen Daten, neue Seite „Was ist neu“. Komplett auf Englisch."
 }

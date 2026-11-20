@@ -1,5 +1,89 @@
 (function () {
   'use strict';
+  /* Sprache: Deutsch ist die Quelle. Für Englisch setzt die App beim Anzeigen die Texte aus dem Wörterbuch ein (exakte Texte und Muster mit {}).
+     Gewählt wird mit ?lang=en oder ?lang=de, die Wahl bleibt im Browser. Ohne Wahl gilt Deutsch. */
+  var LANG = 'de', EN_DICT = null /*EN_DICT*/, LOC = 'de-DE';
+  try {
+    var lq = /[?&]lang=(de|en)\b/.exec(location.search);
+    LANG = lq ? lq[1] : (localStorage.getItem('kartenbox-lang') === 'en' ? 'en' : 'de');
+    if (lq) { localStorage.setItem('kartenbox-lang', LANG); history.replaceState(null, '', location.pathname + location.search.replace(/([?&])lang=(de|en)&?/, '$1').replace(/[?&]$/, '') + location.hash); }
+  } catch (e) { if (lq) LANG = lq[1]; }
+  try { if (sessionStorage.getItem('kartenbox-fade')) { sessionStorage.removeItem('kartenbox-fade'); document.documentElement.classList.add('lin'); setTimeout(function () { document.documentElement.classList.remove('lin'); }, 400); } } catch (e) {}
+  var trs = function (t) { return t; };   // Text im Code übersetzen (für Texte, die nicht im DOM stehen)
+  if (LANG === 'en' && EN_DICT) {
+    LOC = 'en-GB'; document.documentElement.lang = 'en';
+    var ED = EN_DICT.exact, EP = EN_DICT.pat.map(function (p) {
+      var rx = p[0].split(/(\{n\}|\{\})/).map(function (x) {
+        return x === '{}' ? '([\\s\\S]*?)' : x === '{n}' ? '([\\d.,]+)' : x.replace(/[.*+?^$()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+      }).join('');
+      return { re: new RegExp('^' + rx + '$'), to: p[1] };
+    });
+    var enNorm = function (t) { return t.replace(/\s+/g, ' ').trim(); };
+    var enStr = function (t, deep) {
+      var r = ED[t];
+      if (r !== undefined) return r;
+      for (var i = 0; i < EP.length; i++) {
+        var m = EP[i].re.exec(t);
+        if (m) {
+          var k = 0;
+          return EP[i].to.replace(/\{\}/g, function () {
+            var c = m[++k];
+            if (deep) return c;
+            var x = enStr(c, true);
+            if (x === undefined && c.indexOf(', ') > 0) x = c.split(', ').map(function (y) { var z = enStr(y, true); return z === undefined ? y : z; }).join(', ');
+            return x === undefined ? c : x;
+          });
+        }
+      }
+      return undefined;
+    };
+    var EN_ATTR = ['title', 'placeholder', 'aria-label', 'alt'], EN_INLINE = /^(A|B|EM|STRONG|SPAN|KBD|CODE|BR|SMALL|SUP|SUB|U|MARK)$/;
+    var enNode = function (n) {
+      if (n.nodeType === 3) {
+        if (n.parentNode && n.parentNode.closest && n.parentNode.closest('[data-nt]')) return;
+        var v = n.nodeValue, t = enNorm(v);
+        if (t) { var r = enStr(t); if (r !== undefined) n.nodeValue = v.slice(0, v.indexOf(t.charAt(0))) + r + v.slice(v.lastIndexOf(t.charAt(t.length - 1)) + 1); }
+        return;
+      }
+      if (n.nodeType !== 1 || /^(SCRIPT|STYLE)$/i.test(n.tagName) || n.closest('[data-nt], .face')) return;
+      EN_ATTR.forEach(function (a) { var v = n.getAttribute(a); if (v) { var r = enStr(enNorm(v)); if (r !== undefined) n.setAttribute(a, r); } });
+      if (/^(TEXTAREA|SVG)$/i.test(n.tagName)) return;
+      var kids = n.children, mixed = kids.length > 0 && n.childNodes.length > kids.length, i;
+      for (i = 0; mixed && i < kids.length; i++) if (!EN_INLINE.test(kids[i].tagName) || kids[i].children.length > 1) mixed = false;
+      if (mixed) {
+        var h = ED[enNorm(n.innerHTML)];
+        if (h !== undefined) { n.innerHTML = h; return; }
+      }
+      for (i = 0; i < n.childNodes.length; i++) enNode(n.childNodes[i]);
+    };
+    trs = function (t) { var r = enStr(enNorm(String(t))); return r === undefined ? t : r; };
+    enNode(document.body);
+    var enObs = new MutationObserver(function (list) {
+      enObs.disconnect();
+      list.forEach(function (m) {
+        if (m.type === 'childList') m.addedNodes.forEach(enNode);
+        else if (m.type === 'characterData') enNode(m.target);
+        else if (m.target.nodeType === 1) enNode(m.target);
+      });
+      enObs.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: EN_ATTR });
+    });
+    enObs.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: EN_ATTR });
+    document.title = ED[enNorm(document.title)] || document.title;
+  }
+  var fh = document.getElementById('ftHilfe'); if (fh && LANG === 'en') fh.setAttribute('href', 'en/help.html');
+  var fn = document.getElementById('ftNeu'); if (fn && LANG === 'en') fn.setAttribute('href', 'en/whats-new.html');
+  ['hdLang', 'landLang', 'landLang2'].forEach(function (id) {
+    var b = document.getElementById(id); if (!b) return;
+    b.textContent = LANG === 'en' ? 'Deutsch' : 'English'; b.lang = LANG === 'en' ? 'de' : 'en';
+    if (id === 'hdLang') { b.textContent = LANG === 'en' ? 'DE' : 'EN'; b.title = b.getAttribute('aria-label') === null ? '' : (LANG === 'en' ? 'Deutsch' : 'English'); b.setAttribute('aria-label', b.title); }
+    b.dataset.flag = LANG === 'en' ? 'de' : 'en';
+    b.addEventListener('click', function () {
+      var to = LANG === 'en' ? 'de' : 'en', land = $('landing') && $('landing').open;
+      try { localStorage.setItem('kartenbox-lang', to); sessionStorage.setItem('kartenbox-neuladen', '1'); sessionStorage.setItem('kartenbox-sicht', land ? 'land' : (typeof current === 'string' ? current : '')); sessionStorage.setItem('kartenbox-fade', '1'); } catch (e) {}
+      document.documentElement.classList.add('lsw');   // kurz ausblenden, dann neu laden: bleibt auf derselben Seite, kein Aufblitzen
+      setTimeout(function () { location.href = location.pathname + '?lang=' + to; }, 180);
+    });
+  });
   var DEF = 'Allgemein';
   var KEY = 'karteikarten-v2', OLD = 'karteikarten-v1', SKEY = 'kartenbox-einstellungen-v1';
   var db = { cats: [DEF], cards: [], log: {}, colors: {} };
@@ -111,7 +195,7 @@
     karte: { breite: 420, zeilenMin: 5, zeilenMax: 12, automatischeHoehe: true },
     faecher: { anzahl: 5, groesse: 0.55, winkel: 10, unschaerfe: 7 },
     animation: { an: true, tempo: 1 },
-    lernen: { mischen: false, tastatur: true, timer: true, sekunden: 30, tagesziel: 10, richtung: 'vor', tippen: false, wortbank: true, vorlesen: 'aus', sprache: 'de-DE', pruefung: 10, auto: 6, player: false },
+    lernen: { mischen: false, tastatur: true, timer: true, sekunden: 30, tagesziel: 10, richtung: 'vor', tippen: false, wortbank: true, vorlesen: 'aus', sprache: LANG === 'en' ? 'en-GB' : 'de-DE', pruefung: 10, auto: 6, player: false },
     design: { thema: 'auto' },
     update: { pruefen: true },
     start: { seite: 'immer' },
@@ -190,6 +274,7 @@
   function applyCfg() {
     var r = document.documentElement, th = themeNow();
     r.setAttribute('data-theme', th);
+    var tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.setAttribute('content', th === 'dark' ? '#3d2d22' : '#c9a676');   // Statusleiste von Safari passt zum Design
     var MOON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" fill="currentColor"/></svg>';
     var SUN = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/></g></svg>';
     $('themeBtn').innerHTML = th === 'dark' ? SUN : MOON;
@@ -242,6 +327,8 @@
         o.last = c.last === 'bad' ? 'bad' : 'ok';
       }
       if (c.pin === true) o.pin = true;
+      if (c.mst > 0) o.mst = Math.round(Number(c.mst));   // seit wann im obersten Fach (für den Fortschritt)
+      if (c.snz > 0) o.snz = Math.round(Number(c.snz));   // auf morgen geschoben: bis dahin nicht in der Runde
       out.cards.push(o);
     });
     if (!out.cats.length) out.cats.push(DEF);
@@ -561,7 +648,7 @@
      Nur bei großen Fenstern, wo beides außerhalb der Unterlage liegt. Die Unterlage verdeckt es per clip-path, das mitwandert. */
   var accIntro = true, accTimer = 0, accAnims = [];
   function accOK() { return window.innerWidth >= 1340 && CFG.animation.an && !!(window.CSS && CSS.supports && CSS.supports('translate', '1px 0')); }
-  function accStop() { clearTimeout(accTimer); accAnims.forEach(function (a) { try { a.cancel(); } catch (e) {} }); accAnims = []; $('dock').classList.remove('acc-wait'); $('player').classList.remove('acc-wait'); $('dock').style.clipPath = ''; $('pwrap').style.clipPath = ''; }
+  function accStop() { clearTimeout(accTimer); accAnims.forEach(function (a) { try { a.cancel(); } catch (e) {} }); accAnims = []; $('dock').classList.remove('acc-wait'); $('dock').style.clipPath = ''; }
   /* Die Unterlage verdeckt das Zubehör: Der ruhende Behälter bekommt ein Loch in Größe der Unterlage. Nur das Zubehör wandert, so flackert nichts. */
   function accClip() {
     var dk = $('dock').getBoundingClientRect(), pad = document.querySelector('.wrap').getBoundingClientRect(), L = Math.round(pad.left - dk.left), R = Math.round(pad.right - dk.left);
@@ -569,26 +656,19 @@
   }
   function accShift(e, left) {   // so weit schieben, dass es ganz unter der Unterlage liegt
     var pad = document.querySelector('.wrap').getBoundingClientRect(), r = e.getBoundingClientRect();
-    return (left ? pad.left - r.left + 8 : pad.right - r.right - 8) + 'px 0';
+    return (left ? pad.left - r.left + 8 + 30 : pad.right - r.right - 8 - 30) + 'px 0';
   }
   function accRun(out) {   // out: zurück unter die Unterlage. Gibt ein Versprechen zurück, das am Ende erfüllt ist.
     var dk = $('dock'), T = CFG.animation.tempo, rnd = function (lo, hi) { return lo + Math.random() * (hi - lo); }, ease = 'cubic-bezier(.2, .8, .2, 1)', list = [];
     accClip();
-    [['.steps', true], ['.controls', false]].forEach(function (p) {
-      var e = dk.querySelector(p[0]); if (!e || e.hidden) return;
+    [['#accS', true], ['#accC', false]].forEach(function (p) {
+      var e = dk.querySelector(p[0]); if (!e || !e.firstElementChild || e.firstElementChild.hidden) return;
       var f = [{ translate: accShift(e, p[1]) }, { translate: '0 0' }];
       var an = e.animate(out ? [f[1], f[0]] : f, { duration: (out ? rnd(450, 650) : rnd(700, 950)) / T, easing: out ? 'cubic-bezier(.5, 0, .8, .4)' : ease, delay: (out ? rnd(0, 220) : rnd(0, 380)) / T, fill: out ? 'forwards' : 'backwards' });
       accAnims.push(an); list.push(an.finished);
     });
-    var pl = $('player'), pw = $('pwrap');
-    if (!pl.hidden && pl.offsetParent) {   // Player liegt rechts neben der Unterlage und rutscht unter ihr hervor. Nur er bewegt sich, das Loch in der Unterlage steht still.
-      var pr = document.querySelector('.wrap').getBoundingClientRect(), wr = pw.getBoundingClientRect(), W = wr.width, D = Math.round(wr.left + W - pr.right) + 6;
-      pw.style.clipPath = 'inset(-30px -30px -30px ' + Math.round(pr.right - wr.left) + 'px)';
-      var pa = pl.animate([{ translate: -D + 'px 0' }, { translate: '0 0' }], { duration: (out ? rnd(550, 750) : rnd(800, 1000)) / T, easing: out ? 'cubic-bezier(.5, 0, .8, .4)' : 'cubic-bezier(.2, .8, .2, 1)', delay: rnd(0, out ? 220 : 380) / T, direction: out ? 'reverse' : 'normal', fill: out ? 'forwards' : 'backwards' });
-      accAnims.push(pa); list.push(pa.finished);
-    }
     var done = Promise.all(list);
-    if (!out) done.then(function () { dk.style.clipPath = ''; pw.style.clipPath = ''; }, function () {});
+    if (!out) done.then(function () { dk.style.clipPath = ''; }, function () {});
     return done;
   }
   function accOut() { var dk = $('dock'); if (!accOK() || dk.hidden) return Promise.resolve(); accStop(); return accRun(true).catch(function () {}); }
@@ -596,8 +676,8 @@
     var dk = $('dock');
     if (!accIntro || dk.hidden || !accOK()) return;
     accIntro = false; accStop();
-    dk.classList.add('acc-wait'); $('player').classList.add('acc-wait');
-    accTimer = setTimeout(function () { dk.classList.remove('acc-wait'); $('player').classList.remove('acc-wait'); accRun(false); }, 900);
+    dk.classList.add('acc-wait');
+    accTimer = setTimeout(function () { dk.classList.remove('acc-wait'); accRun(false); }, 900);
   }
   /* Die graue Unterlage wird sanft höher oder niedriger, statt zu springen */
   function padH() { return parseFloat(getComputedStyle(document.querySelector('.wrap')).height) || 0; }
@@ -611,17 +691,28 @@
   }
   var NEU_IN = '1.1.0', NEU_KEY = 'kartenbox-neu-gesehen', neuNow = false;
   function neuSeen() { try { return localStorage.getItem(NEU_KEY) === NEU_IN; } catch (e) { return true; } }
+  /* Handy: Rubriken hat keinen eigenen Tab, sondern liegt als Umschalter im Karten-Tab */
+  var PHONE = window.matchMedia ? matchMedia('(max-width: 600px)') : { matches: false };
+  function syncTabs() {
+    var tv = current === 'cats' && PHONE.matches ? 'all' : current;
+    document.querySelectorAll('.tab').forEach(function (t) { t.setAttribute('aria-selected', String(t.dataset.view === tv)); });
+    document.querySelectorAll('.catseg button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.go === current)); });
+  }
+  document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('.catseg [data-go]'); if (b && b.dataset.go !== current) show(b.dataset.go); });
+  if (PHONE.addEventListener) PHONE.addEventListener('change', function () { syncTabs(); moveInd(false); });
   function show(view) {
     if (view !== 'study') autoStop();
     if (current === 'opts' && view !== 'opts') neuNow = false;
+    if (current === 'prog' && view !== 'prog' && PRO.progLeave) PRO.progLeave();
     current = view;
-    document.querySelectorAll('.tab').forEach(function (t) { t.setAttribute('aria-selected', String(t.dataset.view === view)); });
+    syncTabs();
     document.querySelectorAll('.view').forEach(function (v) { v.classList.toggle('active', v.id === 'view-' + view); });
     moveInd(true);
     if (view === 'study') { accIntro = true; if (studyDirty) rebuildStudy(); else if (!$('stage').hidden) layout(); syncPlayer(); tryAcc(); }
     if (view === 'add') { renderAddChips(); resetAdd(); $('newQ').focus(); }
     if (view === 'all') { renderListChips(); renderList(); }
     if (view === 'cats') renderCats();
+    if (view === 'prog') renderProg();
     if (view === 'opts') {
       if (!neuNow && !neuSeen()) neuNow = true;
       if (neuNow) { try { localStorage.setItem(NEU_KEY, NEU_IN); } catch (e) {} }
@@ -643,6 +734,7 @@
       indT = setTimeout(function () { i.classList.remove('moving'); }, 520 / CFG.animation.tempo);
     } else rest();
     prevTab = idx;
+    if (PHONE.matches) setTimeout(rest, 400);   // der aktive Tab klappt auf: danach Marke an die endgültige Breite setzen
   }
   /* Mouseover: das helle Kästchen wandert mit der Maus mit (weich nachgezogen) */
   (function () {
@@ -678,12 +770,13 @@
     var f = document.querySelector('.filters'), sent = $('filtSent'), stuck = false, raf = 0, clr = 0;
     if (!f || !sent) return;
     function pos() { return Array.prototype.map.call(f.children, function (k) { var r = k.getBoundingClientRect(); return { x: r.left, y: r.top }; }); }
-    var pinned = false, lastY = 0, up = false;
+    var pinned = false, pmt = 0;
     function narrow() { return innerWidth < 760 && !matchMedia('(max-width: 340px), (max-height: 520px)').matches; }
     function pin(on) {   // Handy: Leiste wird sofort beim ersten Scrollen fest oben angeheftet (Platzhalter hält die Höhe)
       pinned = on;
       if (on) {
         var r = f.getBoundingClientRect(), cs = getComputedStyle(f);
+        pmt = parseFloat(cs.marginTop) || 0;
         sent.style.height = (r.height + (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.marginBottom) || 0)) + 'px';
         f.style.left = r.left + 'px'; f.style.width = r.width + 'px'; f.classList.add('pin');
       } else { f.classList.remove('pin'); f.style.left = f.style.width = ''; sent.style.height = ''; }
@@ -704,12 +797,9 @@
     function check() {
       raf = 0;
       var nar = narrow(), active = current === 'study' && sent.offsetParent !== null && (nar || getComputedStyle(f).position === 'sticky');
-      var y = window.scrollY; if (y !== lastY) { up = y < lastY; lastY = y; }
-      if (nar) {   // runter: sofort anheften; hoch: sobald die Navigation wieder sichtbar wird zurück an den Platz
-        var navB = document.querySelector('.tabs').getBoundingClientRect().bottom;
-        set(active && (pinned ? !(up && navB > 0) && y > 2 : y > 10 && !up));
-      }
-      else set(active && sent.getBoundingClientRect().top < (parseFloat(getComputedStyle(f).top) || 0) - 1);
+      // Anheften erst, wenn die Leiste selbst oben ankommt. Vorher scrollen Kopfzeile und Reiter ganz normal weg.
+      var top = nar ? 8 : (parseFloat(getComputedStyle(f).top) || 0);
+      set(active && (nar && pinned ? sent.getBoundingClientRect().top + pmt : nar ? f.getBoundingClientRect().top : sent.getBoundingClientRect().top) < top - 1);
       if (!nar && pinned) pin(false);
       if (pinned) { var r = sent.parentNode.getBoundingClientRect(), g = getComputedStyle(sent.parentNode); f.style.left = (r.left + (parseFloat(g.paddingLeft) || 0)) + 'px'; f.style.width = (r.width - (parseFloat(g.paddingLeft) || 0) - (parseFloat(g.paddingRight) || 0)) + 'px'; }
     }
@@ -821,9 +911,15 @@
     var h = $('shelf').style;
     h.left = '4px'; h.top = pileTop + 'px'; h.width = sw + 'px'; h.height = sh + 'px';
     h.setProperty('--hd', (g.hd * ss) + 'px'); h.setProperty('--plabel', Math.max(9, g.hd * ss * 0.5) + 'px');
+    // Zwei Ablagen (Später oben, Nochmal darunter) in der linken Spalte, wenn dort Platz ist. Sonst eine gemeinsame „Ablage“ (Handy).
+    var two = r.wide && pileTop + 2 * sh + 12 <= H - 4;
+    S.two = two;
+    var h2 = $('shelf2').style;
+    h2.left = '4px'; h2.top = (pileTop + sh + 12) + 'px'; h2.width = sw + 'px'; h2.height = sh + 'px';
+    h2.setProperty('--hd', (g.hd * ss) + 'px'); h2.setProperty('--plabel', Math.max(9, g.hd * ss * 0.5) + 'px');
     $('endBox').style.top = r.bigCy + 'px';
     return {
-      hx: 4 + sw / 2, nFull: r.nFull, W: W, g: g, f: f, cw: r.cw, ch: r.ch, bigCy: r.bigCy, fanCy: r.fanCy, H: H, ss: ss,
+      hx: 4 + sw / 2, sy2: pileTop + sh + 12 + sh / 2, nFull: r.nFull, W: W, g: g, f: f, cw: r.cw, ch: r.ch, bigCy: r.bigCy, fanCy: r.fanCy, H: H, ss: ss,
       sx: W - 4 - sw / 2, sy: pileTop + sh / 2
     };
   }
@@ -842,6 +938,20 @@
     node.appendChild(document.createTextNode(q.slice(last)));
     if (c.a && c.a !== clozeWords(q).join(', ')) node.appendChild(document.createTextNode('\n\n' + c.a));
   }
+  /* Symbol „Karte hat ein Bild“: Font Awesome Free 7 (CC BY 4.0), lokal eingebettet, kein externer Link */
+  var IMG_ICON = '<svg class="picico" viewBox="96 96 448 448" aria-hidden="true" focusable="false"><path fill="currentColor" d="M160 96C124.7 96 96 124.7 96 160L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 160C544 124.7 515.3 96 480 96L160 96zM224 176C250.5 176 272 197.5 272 224C272 250.5 250.5 272 224 272C197.5 272 176 250.5 176 224C176 197.5 197.5 176 224 176zM368 288C376.4 288 384.1 292.4 388.5 299.5L476.5 443.5C481 450.9 481.2 460.2 477 467.8C472.8 475.4 464.7 480 456 480L184 480C175.1 480 166.8 475 162.7 467.1C158.6 459.2 159.2 449.6 164.3 442.3L220.3 362.3C224.8 355.9 232.1 352.1 240 352.1C247.9 352.1 255.2 355.9 259.7 362.3L286.1 400.1L347.5 299.6C351.9 292.5 359.6 288.1 368 288.1z"/></svg>';
+  /* Knopf unten rechts auf der Karte. Mit der Maus darüber erscheint ein Klebeband-Zettel mit Vorschau, ein Klick vergrößert das Bild. */
+  function picBtn(src) {
+    var b = el('button', 'picbtn');
+    b.type = 'button'; b.setAttribute('aria-label', 'Bild zu dieser Karte vergrößern');
+    b.insertAdjacentHTML('beforeend', IMG_ICON);
+    var t = el('span', 'tape'), ti = el('span', 'tapein'), im = el('img'), l1 = el('b', null, 'Bild zur Karte'), l2 = el('small', null, 'Klicken zum Vergrößern');
+    im.src = src; im.alt = ''; im.draggable = false;
+    ti.appendChild(im); ti.appendChild(l1); ti.appendChild(l2);
+    t.appendChild(ti); b.appendChild(t);
+    b._src = src;
+    return b;
+  }
   function face(kind, label, text, img, card) {
     var f = el('div', 'face paper ' + kind);
     f.appendChild(el('span', 'tag', label));
@@ -858,11 +968,11 @@
     }
     var sh = el('div', 'txt sharp', text);
     if (card && kind === 'back' && hasCloze(card.q) && text === aShow(card)) { sh.textContent = ''; clozeRender(sh, card); }
-    if (img) { var im = el('img', 'cimg'); im.src = img; im.alt = ''; im.draggable = false; sh.insertBefore(im, sh.firstChild); }
     f.appendChild(sh);
+    if (img) f.appendChild(picBtn(img));
     return f;
   }
-  function shelfT(d, rot) { return 'translate(' + (d.hx - d.W / 2) + 'px,' + (d.sy - d.bigCy) + 'px) rotate(' + rot + 'deg) scale(' + d.ss + ')'; }
+  function shelfT(d, rot, second) { return 'translate(' + (d.hx - d.W / 2) + 'px,' + ((second ? d.sy2 : d.sy) - d.bigCy) + 'px) rotate(' + rot + 'deg) scale(' + d.ss + ')'; }
   function buildEl(c) {
     var e = el('div', 'fcard');
     e.dataset.id = c.id;
@@ -973,7 +1083,7 @@
       S.els[id] = e;
       stage.appendChild(e);
       e.style.transition = 'none';
-      e.style.transform = fresh ? stackT(d, 0) : back;
+      e.style.transform = fresh ? ((S.origin && S.origin[id]) || stackT(d, 0)) : back;   // neue Runde: vom Stapel rechts. Aus der Ablage geholt: vom jeweiligen Ablagestapel links
       e.style.zIndex = fresh ? 20 : 5;
       void e.offsetWidth;
       e.style.transition = '';
@@ -991,9 +1101,11 @@
 
   /* Lernstand: Karteikasten mit 5 Fächern. Gewusst = ein Fach höher und später wieder dran, Nochmal = zurück in Fach 1 */
   var DAYS = [0, 0, 1, 3, 7, 14];
+  function isSnoozed(c) { return !!c.snz && c.snz > Date.now(); }
+  function snoozedN() { return (S.demo ? demoCards().filter(function (c) { return S.dcat === null || c.cat === S.dcat; }) : catList()).filter(isSnoozed).length; }
   function isDue(c) { return !c.n || (c.due || 0) <= Date.now(); }
   function isHard(c) { return c.last === 'bad'; }
-  function baseList() { return S.demo ? demoCards().filter(function (c) { return S.dcat === null || c.cat === S.dcat; }) : catList(); }
+  function baseList() { return (S.demo ? demoCards().filter(function (c) { return S.dcat === null || c.cat === S.dcat; }) : catList()).filter(function (c) { return !isSnoozed(c); }); }
   function catList() { return db.cards.filter(function (c) { return S.cat === null || c.cat === S.cat; }); }
   function dayKey(t) {
     var d = t ? new Date(t) : new Date();
@@ -1006,7 +1118,42 @@
     while (lg[dayKey(d)]) { n++; d.setDate(d.getDate() - 1); }
     return n;
   }
+  /* Kleine Zeilen der Rechner-Anzeige: Fach der offenen Karte, richtig/nochmal in dieser Runde, Tagesziel */
+  function lcdInfo() {
+    var c = S.sel && byId(S.sel), g = CFG.lernen.tagesziel, t = (db.log[dayKey()] || {}).n || 0;
+    $('lcdBox').textContent = 'FACH ' + (c ? (c.box || 1) : '–');
+    $('lcdR').textContent = '+' + (S.round ? S.round.ok : 0) + ' −' + (S.round ? S.round.bad : 0);
+    $('lcdG').textContent = 'HEUTE ' + t + (g ? '/' + g : '');
+  }
+  /* Begrüßung mit Nickname und Tagesdatum. Ohne Konto oder Nickname bleibt die Zeile weg. */
+  function greet() {
+    var g = $('greet'), nick = (typeof K !== 'undefined' && K.user && K.user.nick) || '';
+    if (!nick) { g.hidden = true; return; }
+    var d = new Date(), h = d.getHours();
+    $('greetHi').textContent = (h >= 5 && h < 11 ? 'Guten Morgen' : h >= 11 && h < 17 ? 'Guten Tag' : h >= 17 && h < 22 ? 'Guten Abend' : 'Hallo') + ', ' + nick + '.';
+    var n = S.demo ? 0 : db.cards.filter(function (c) { return isDue(c) && !isSnoozed(c); }).length, day = d.toLocaleDateString(LOC, { weekday: 'long', day: 'numeric', month: 'long' });
+    $('greetSub').textContent = day + (S.demo || !db.cards.length ? '' : n ? ' · ' + n + (n === 1 ? ' Karte fällig' : ' Karten fällig') : ' · heute nichts fällig');
+    g.hidden = false;
+  }
+  /* Tagesziel-Leiste oben auf der Lernen-Seite. Beim Erreichen drückt sich ein goldenes Siegel auf, fällt der Wert wieder darunter, verschwindet es. */
+  var tgzHit = null;
+  function goalStrip() {
+    var g = CFG.lernen.tagesziel, box = $('tgz');
+    if (S.demo || !g || !db.cards.length) { box.hidden = true; tgzHit = null; return; }
+    var t = (db.log[dayKey()] || {}).n || 0, hit = t >= g, first = box.hidden, bar = $('tgzBar');
+    box.hidden = false;
+    $('tgzTxt').textContent = t + ' von ' + g;
+    var w = Math.min(100, t / g * 100) + '%';
+    if (first) { bar.style.width = '0'; void bar.offsetWidth; }
+    bar.style.width = w;
+    if (hit && tgzHit === false) { box.classList.add('fresh'); box.classList.remove('undo'); box.classList.add('done'); setTimeout(function () { box.classList.remove('fresh'); }, 1600); }
+    else if (hit) box.classList.add('done');
+    else if (tgzHit) { box.classList.add('undo'); box.classList.remove('fresh'); setTimeout(function () { box.classList.remove('done', 'undo'); }, 320 / CFG.animation.tempo); }
+    else box.classList.remove('done', 'fresh', 'undo');
+    tgzHit = hit;
+  }
   function updateStats() {
+    lcdInfo(); greet(); goalStrip();
     var bar = $('statsBar');
     if (S.demo || !db.cards.length) { bar.hidden = true; return; }
     bar.hidden = false; bar.textContent = '';
@@ -1016,19 +1163,38 @@
     var b = el('div', 'sbar'), i = el('i');
     i.style.width = (list.length ? sit / list.length * 100 : 0) + '%';
     b.appendChild(i); w.appendChild(b); bar.appendChild(w);
-    var t = (db.log[dayKey()] || {}).n || 0, g = CFG.lernen.tagesziel, hit = g > 0 && t >= g, st = streak();
-    bar.appendChild(el('span', 'goal' + (hit ? ' hit' : ''), 'Heute ' + t + (g ? ' / ' + g : '') + (hit ? ' ✓' : '')));
     if (S.exam) bar.appendChild(el('span', 'goal hit', 'Prüfung'));
-    var sb = el('button', 'btn statbtn', 'Serie ' + st + (st === 1 ? ' Tag' : ' Tage') + ' · Statistik'); sb.type = 'button'; sb.addEventListener('click', function () { openStats(); });
+    var st = streak(), sb = el('button', 'btn statlink', 'Serie ' + st + (st === 1 ? ' Tag' : ' Tage') + ' · Fortschritt'); sb.type = 'button'; sb.addEventListener('click', function () { show('prog'); });
     bar.appendChild(sb);
   }
-  /* Zusatzfunktionen (Statistik, Tippen, Vorlesen, Kassettenplayer, Prüfung, Richtung): Der Code liegt nicht in dieser Datei, er kommt nach der Anmeldung vom Server (api/inc/pro.js). Ohne ihn tun die Platzhalter nichts. */
+  /* Fortschritt: ohne Konto nur ein Hinweis, mit Konto kommt die Ansicht aus pro.js (Tag, Monat, Jahr, Demo). */
+  function renderProg() {
+    var r = $('fpRoot');
+    r.textContent = '';
+    if (!K.user && K.on) {   // ohne Konto-System (lokale Datei) ist der Fortschritt frei
+      var g = el('section', 'group teaser');
+      g.appendChild(el('h3', null, 'Fortschritt'));
+      g.appendChild(el('p', null, 'Hier siehst du, wie viele Karten du gelernt hast, nach Rubriken geordnet, für Tag, Monat und Jahr. Das gibt es mit einem kostenlosen Konto.'));
+      var row = el('div', 'row');
+      var b1 = el('button', 'btn primary', 'Konto anlegen'); b1.type = 'button'; b1.addEventListener('click', function () { openAcc('register'); });
+      var b2 = el('button', 'btn', 'Anmelden'); b2.type = 'button'; b2.addEventListener('click', function () { openAcc('login'); });
+      row.appendChild(b1); row.appendChild(b2); g.appendChild(row); r.appendChild(g);
+      return;
+    }
+    if (PRO.progress) { PRO.progress(r); return; }
+    r.appendChild(el('p', 'hint', 'Wird geladen …'));
+    proExt(function (ok) {
+      if (current !== 'prog') return;
+      if (ok && PRO.progress) PRO.progress(r); else { r.textContent = ''; r.appendChild(el('p', 'hint', 'Der Fortschritt konnte nicht geladen werden. Bitte lade die Seite neu.')); }
+    });
+  }
+  /* Zusatzfunktionen (Fortschritt, Tippen, Vorlesen, Kassettenplayer, Prüfung, Richtung): Der Code liegt nicht in dieser Datei, er kommt nach der Anmeldung vom Server (api/inc/pro.js). Ohne ihn tun die Platzhalter nichts. */
   var PRO = {}, PRO_EMBED = null /*PRO_EMBED*/;
   function proNeed() { toast('Das gibt es mit Konto'); if (typeof openAcc === 'function') openAcc('login'); }
-  function openStats(d) { if (PRO.openStats) PRO.openStats(d); else proNeed(); }
-  function typeState() { if (PRO.typeState) PRO.typeState(); else { $('typeRow').hidden = true; $('bankRow').hidden = true; } }
+    function typeState() { if (PRO.typeState) PRO.typeState(); else { $('typeRow').hidden = true; $('bankRow').hidden = true; } }
   function speakCard(b) { if (PRO.speakCard) PRO.speakCard(b); }
-  function syncPlayer() { if (PRO.syncPlayer) PRO.syncPlayer(); else $('player').hidden = true; }
+  function playerOff() { $('playerOff').hidden = !(K.user && window.innerWidth >= 900 && $('player').hidden && !$('stage').hidden); }
+  function syncPlayer() { if (PRO.syncPlayer) PRO.syncPlayer(); else $('player').hidden = true; playerOff(); }
   function autoStop() { if (PRO.autoStop) PRO.autoStop(); }
   function startExam() { if (PRO.startExam) PRO.startExam(); else proNeed(); }
   var AUTO = { on: false, rand: false, t: 0, keep: false, iv: 0, end: 0, ph: '' };
@@ -1058,7 +1224,10 @@
     d('hasCloze', function () { return hasCloze; }, function (v) { hasCloze = v; });
     d('next', function () { return next; }, function (v) { next = v; });
     d('norm', function () { return norm; }, function (v) { norm = v; });
-    d('openStats', function () { return openStats; }, function (v) { openStats = v; });
+    d('LANG', function () { return LANG; });
+    d('LOC', function () { return LOC; });
+    d('tr', function () { return trs; });
+    d('goalStrip', function () { return goalStrip; }, function (v) { goalStrip = v; });
     d('qShow', function () { return qShow; }, function (v) { qShow = v; });
     d('rebuildStudy', function () { return rebuildStudy; }, function (v) { rebuildStudy = v; });
     d('renderOptions', function () { return renderOptions; }, function (v) { renderOptions = v; });
@@ -1116,12 +1285,12 @@
     var dr = PRO.direction ? PRO.direction() : 'vor';
     S.rev = {};
     S.list.forEach(function (c) { S.rev[c.id] = !hasCloze(c.q) && (dr === 'rueck' || (dr === 'misch' && Math.random() < 0.5)); });
-    S.total = S.list.length; S.done = 0; S.sel = null; S.round = { ok: 0, bad: 0 }; S.marks = {}; S.shelf = [];
+    S.snzN = 0; S.total = S.list.length; S.done = 0; S.sel = null; S.round = { ok: 0, bad: 0 }; S.marks = {}; S.shelf = [];
     S.rank = {}; S.queue.forEach(function (id, i) { S.rank[id] = i; });
     var has = S.list.length > 0;
-    var filtered = !has && base.length > 0;   // Karten gibt es, nur der Filter ist leer
+    var filtered = !has && (base.length > 0 || snoozedN() > 0);   // Karten gibt es, nur der Filter ist leer
     $('studyEmpty').hidden = has;
-    $('emptyMsg').textContent = filtered ? (mode === 'faellig' ? 'Heute ist nichts mehr fällig. Alles sitzt.' : mode === 'pin' ? 'Noch keine Karte angeheftet. Tippe bei einer geöffneten Karte auf die Pinnadel.' : 'Keine schweren Karten. Gut gemacht.')
+    $('emptyMsg').textContent = filtered ? (!base.length ? 'Alle Karten sind auf morgen geschoben.' : mode === 'faellig' ? 'Heute ist nichts mehr fällig. Alles sitzt.' : mode === 'pin' ? 'Noch keine Karte angeheftet. Tippe bei einer geöffneten Karte auf die Pinnadel.' : 'Keine schweren Karten. Gut gemacht.')
       : db.cards.length ? 'In dieser Rubrik gibt es noch keine Karten.' : 'Noch keine Karten. Lege deine erste an oder sieh dir die Demo an.';
     $('modeAllBtn').hidden = !filtered;
     $('studyEmpty').querySelectorAll('[data-goto], #demoBtn2').forEach(function (b) { b.hidden = filtered; });
@@ -1158,41 +1327,69 @@
     }
   }
   /* Ablage links oben: Hier landen Karten mit Weiter und Nochmal. Ein Klick holt sie zurück in den Fächer. */
-  function renderShelf() {
-    var p = $('shelf');
+  /* Hauptstapel leer, aber Karten liegen noch in der Ablage: Nichts kommt von selbst zurück. Du holst Später und Nochmal einzeln und arbeitest sie ab.
+     Erst wenn alles erledigt ist, erscheint „Alle Karten geschafft“ mit „Neue Runde“ (alle Karten wieder in den Stapel). */
+  function showPiles() {
+    var sk = shelfKind('skip').length, bd = shelfKind('bad').length, two = !!S.two, parts = [];
+    if (two) { if (sk) parts.push('Später ' + sk); if (bd) parts.push('Nochmal ' + bd); } else parts.push('Ablage ' + S.shelf.length);
+    $('endMsg').textContent = 'Stapel geschafft: ' + S.done + ' von ' + S.total + '. Noch offen: ' + parts.join(', ') + '.';
+    $('endLater').textContent = two ? 'Später holen (' + sk + ')' : 'Ablage holen (' + S.shelf.length + ')';
+    $('endLater').hidden = two ? !sk : false;
+    $('endBad').textContent = 'Nochmal holen (' + bd + ')';
+    $('endBad').hidden = !two || !bd;
+    $('endAll').textContent = 'Alle holen (' + S.shelf.length + ')';
+    $('endTomorrow').textContent = 'Später auf morgen (' + sk + ')'; $('endTomorrow').hidden = !sk;
+    $('endAll').hidden = !(two && sk && bd);   // „Alle“ gibt es nur, wenn beide Stapel Karten haben
+    $('newRound').hidden = true; $('examBtn').hidden = true;
+    $('endBox').hidden = false;
+  }
+  /* Ablage: Mit Platz zwei Stapel nebeneinander, „Später“ (Weiter, blauer Reiter) und „Nochmal“ (rosa Reiter). Jeder holt nur seine Karten zurück.
+     Ohne Platz (Handy) liegt alles in einer gemeinsamen „Ablage“. */
+  function shelfPile(p, ids, label) {
     p.textContent = '';
-    p.hidden = !S.shelf.length;
-    var show = S.shelf.slice(-3);
-    show.forEach(function (id, j) {   // Karten liegen gestapelt, ein Streifen Klebeband mit „Ablage“ klebt darüber
+    p.hidden = !ids.length;
+    if (!ids.length) return;
+    var show = ids.slice(-3);
+    show.forEach(function (id, j) {   // Karten liegen gestapelt, ein Streifen Klebeband mit Aufschrift klebt darüber
       var c = byId(id), sc = el('div', 'sc'), depth = show.length - 1 - j;
       sc.dataset.mark = S.marks[id] || '';
       sc.dataset.pin = c && c.pin ? '1' : '';
       if (depth > 0) sc.style.transform = 'translate(' + (-depth * 3) + 'px,' + (depth * 3) + 'px) rotate(' + ((depth % 2 ? -1 : 1) * depth * 1.5) + 'deg)';
       p.appendChild(sc);
     });
-    p.appendChild(el('span', 'tape', 'Ablage ' + S.shelf.length));
-    p.setAttribute('aria-label', 'Ablage mit ' + S.shelf.length + ' Karten, zurück in den Fächer holen');
+    p.appendChild(el('span', 'tape', label + ' ' + ids.length));
+    p.setAttribute('aria-label', label + ' mit ' + ids.length + ' Karten, zurück in den Fächer holen');
   }
-  /* Ablage zurück: Die Karten kommen vor den Rest der Runde */
-  function recall() {
+  function shelfKind(kind) { return S.shelf.filter(function (id) { return kind === 'bad' ? S.marks[id] === 'bad' : S.marks[id] !== 'bad'; }); }
+  function renderShelf() {
+    if (S.two) { shelfPile($('shelf'), shelfKind('skip'), 'Später'); shelfPile($('shelf2'), shelfKind('bad'), 'Nochmal'); }
+    else { shelfPile($('shelf'), S.shelf, 'Ablage'); shelfPile($('shelf2'), [], ''); }
+  }
+  /* Ablage zurück: Die Karten kommen vor den Rest der Runde. kind: 'skip' oder 'bad' holt nur diesen Stapel, sonst alles. */
+  function recall(kind) {
     if (!S.shelf.length) return;
-    S.queue = S.shelf.concat(S.queue);
-    S.shelf = [];
+    var ids = kind ? shelfKind(kind) : S.shelf.slice();
+    if (!ids.length) return;
+    var d0 = dims(); S.origin = {};
+    ids.forEach(function (id) { S.origin[id] = shelfT(d0, -7, !!S.two && S.marks[id] === 'bad'); });
+    S.queue = ids.concat(S.queue);
+    S.shelf = S.shelf.filter(function (id) { return ids.indexOf(id) < 0; });
     S.sel = null; stopTimer();
     clearEls();
     $('endBox').hidden = true;
     renderShelf();
     fill(0);
+    S.origin = null;
     updateUI();
   }
   function updateUI() {
     var e = S.sel && S.els[S.sel];
-    var run = !!(e && TM.id === S.sel);
-    $('flipBtn').disabled = !e || run;
+    $('flipBtn').disabled = !e;
     $('nextBtn').disabled = !e;
     var fl = !!(e && e._flipped);
-    $('nextBtn').hidden = fl; $('badBtn').hidden = !fl; $('okBtn').hidden = !fl;
-    $('flipBtn').textContent = run ? 'Countdown läuft' : e && e._flipped ? 'Frage zeigen' : 'Lösung zeigen';
+    $('nextBtn').hidden = fl; $('badBtn').hidden = !fl; $('okBtn').hidden = !fl;   // Handy und Tablet: nur die passenden Tasten. Am Rechner bleiben alle stehen (CSS), die unpassenden sind grau
+    $('nextBtn').disabled = !e || fl; $('badBtn').disabled = !fl; $('okBtn').disabled = !fl;
+    $('flipBtn').textContent = e && e._flipped ? 'Frage zeigen' : 'Lösung zeigen';
     var step = !e ? 0 : (e._flipped ? 2 : 1);
     document.querySelectorAll('#steps li').forEach(function (li, i) {
       li.classList.toggle('now', i === step);
@@ -1200,6 +1397,7 @@
     });
     $('slot').classList.toggle('off', !!S.sel || !S.queue.length);
     $('lcdN').textContent = S.done + '/' + S.total;   // Anzeige des Taschenrechners
+    lcdInfo();
     typeState();
   }
   /* Countdown: läuft, solange die Frage gezeigt wird; bei 0 dreht sich die Karte zur Lösung */
@@ -1229,6 +1427,7 @@
     TM.iv = setInterval(tickTimer, 100);
   }
   function select(id) {
+    if (S.shuffling) return;
     var ae = document.activeElement;   // Fokus von Schaltern wie Demo löst, sonst schaltet die Leertaste statt die Karte zu drehen
     if (ae && ae !== document.body && ae.tagName === 'BUTTON' && !stage.contains(ae)) ae.blur();
     S.sel = id; layout(); startTimer(id);
@@ -1239,7 +1438,7 @@
   }
   function deselect() { if (!S.sel) return; try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} stopTimer(); S.sel = null; layout(); updateUI(); }
   function flip() {
-    if (!S.sel || TM.id === S.sel) return; // solange der Countdown läuft, dreht nur er die Karte
+    if (!S.sel) return;   // auch während des Countdowns lässt sich die Karte sofort umdrehen (stopTimer unten)
     var e = S.els[S.sel];
     setFlip(e, !e._flipped);
     if (e._flipped) stopTimer();
@@ -1266,14 +1465,33 @@
       e.remove();
       if (gen !== S.gen) return;
       renderPile();
-      if (!S.queue.length && S.shelf.length) { recall(); return; }
-      if (!S.queue.length) {
-        $('endMsg').textContent = S.exam ? examText() : 'Alle Karten geschafft.' + (S.round.ok + S.round.bad ? ' Gewusst: ' + S.round.ok + ', Nochmal: ' + S.round.bad + '.' : '');
-        $('examBtn').hidden = S.demo;
-        $('endBox').hidden = false;
-      }
+      if (!S.queue.length && S.shelf.length) { showPiles(); updateUI(); return; }
+      if (!S.queue.length) showEnd();
       updateUI();
     }, ms);
+  }
+  function showEnd() {
+    $('endLater').hidden = true; $('endBad').hidden = true; $('endAll').hidden = true; $('endTomorrow').hidden = true; $('newRound').hidden = false;
+    $('endMsg').textContent = S.exam ? examText() : 'Alle Karten geschafft.' + (S.round.ok + S.round.bad ? ' Gewusst: ' + S.round.ok + ', Nochmal: ' + S.round.bad + '.' : '') + (S.snzN ? ' Auf morgen geschoben: ' + S.snzN + '.' : '');
+    $('examBtn').hidden = S.demo;
+    $('endBox').hidden = false;
+  }
+  /* Später auf morgen: Die Karten verlassen die Runde und kommen morgen wieder (unter „Fällig“). Fach und Lernstand bleiben, es zählt nicht als Fehler. */
+  function snoozeLater() {
+    var ids = shelfKind('skip');
+    if (!ids.length) return;
+    var t = new Date(); t.setHours(24, 0, 0, 0); t = t.getTime();
+    ids.forEach(function (id) {
+      var c = byId(id); if (!c) return;
+      c.snz = t;
+      if (c.n && (c.due || 0) > t) c.due = t;
+    });
+    if (!S.demo) { persist(); scheduleWrite(); }
+    S.shelf = S.shelf.filter(function (id) { return ids.indexOf(id) < 0; });
+    S.total -= ids.length; S.snzN += ids.length;
+    renderShelf(); renderModes(); updateUI();
+    if (S.shelf.length) showPiles(); else showEnd();
+    toast(ids.length + (ids.length === 1 ? ' Karte kommt' : ' Karten kommen') + ' morgen wieder');
   }
   /* Weiter ohne Lösung und Nochmal: Die Karte fliegt in die Ablage (links oben), nicht auf den Gewusst-Stapel. Ist die Runde leer, kommt die Ablage von selbst zurück. */
   /* Auto-Modus: Frage zeigen, drehen, weiter. Zählt nicht als Lernen, die Fächer bleiben unverändert. */
@@ -1290,7 +1508,7 @@
     e.classList.remove('sel');
     e.classList.add('leaving');
     e.style.zIndex = 20;
-    e.style.transform = shelfT(d, -7);
+    e.style.transform = shelfT(d, -7, !!S.two && kind === 'bad');
     fill(250);
     updateUI();
     var ms = CFG.animation.an ? Math.round(900 / CFG.animation.tempo) : 30;
@@ -1298,7 +1516,7 @@
       e.remove();
       if (gen !== S.gen) return;
       renderShelf();
-      if (!S.queue.length) recall();
+      if (!S.queue.length) showPiles();
       updateUI();
     }, ms);
   }
@@ -1314,41 +1532,77 @@
       c.n = (c.n || 0) + 1;
       c.last = ok ? 'ok' : 'bad';
       c.miss = ok ? 0 : Math.min(99, (c.miss || 0) + 1);
-      c.box = ok ? Math.min(5, (c.box || 1) + 1) : 1;
+      var ob = c.box || 1;
+      c.box = ok ? Math.min(5, ob + 1) : 1;
+      if (ok && c.box === 5 && ob < 5 && !S.demo) c.mst = Date.now();
       c.due = ok ? Date.now() + DAYS[c.box] * 864e5 : 0;
+      delete c.snz;
     }
     if (c && !S.demo) {
       var k = dayKey(), L = db.log[k] || (db.log[k] = { n: 0, ok: 0 });
       L.n++; if (ok) L.ok++;
       (L.c || (L.c = [])).push([id, ok ? 1 : 0]); if (L.c.length > 400) L.c.shift();
       persist(); scheduleWrite();
-      if (CFG.lernen.tagesziel && L.n === CFG.lernen.tagesziel) toast('Tagesziel erreicht');
     }
     S.round[ok ? 'ok' : 'bad']++;
     if (S.exam) S.exam[ok ? 'ok' : 'bad']++;
     if (ok || S.exam) { delete S.marks[id]; next(); } else putBack('bad');
     updateStats(); renderModes();
   }
+  /* Mischen: Nur die ausgelegten Karten werden gemischt, der Stapel bleibt wie er ist.
+     Die Karten sammeln sich zu einem Päckchen, werden wie beim Kartenmischen gesplittet und ineinandergeschoben und fächern sich dann in neuer Reihenfolge wieder auf. */
   function shuffle() {
-    if (S.queue.length < 2) return;
-    shuffleArr(S.queue);
+    if (S.shuffling) return;
+    var n = Math.min(CFG.faecher.anzahl, S.queue.length);
+    if (n < 2) return;
+    var old = S.queue.slice(0, n), vis = old.slice(), t = 0;
+    do { shuffleArr(vis); } while (vis.join() === old.join() && ++t < 8);
+    if (vis.join() === old.join()) vis.push(vis.shift());
+    S.queue = vis.concat(S.queue.slice(n));
+    stopTimer();
+    var d = dims();
+    var els = old.map(function (id) { return S.els[id]; });
+    if (!CFG.animation.an || els.indexOf(undefined) >= 0 || !stage.isConnected) {
+      S.sel = null; clearEls(); fill(0); updateUI(); toast('Gemischt'); return;
+    }
+    S.shuffling = true;
+    var k = 1 / (CFG.animation.tempo || 1), alive = function () { return els.every(function (e) { return e.isConnected; }); };
+    function ph(ms, fn) { setTimeout(function () { if (alive()) fn(); else S.shuffling = false; }, ms * k); }
+    function move(e, tr, dur, delay) { e.style.transition = 'transform ' + (dur * k) + 'ms cubic-bezier(.4,0,.2,1)'; e.style.transitionDelay = (delay * k) + 'ms'; e.style.transform = tr; }
+    function pile(i, dx, a) { return fanT({ dx: dx, dy: -i * 0.6, a: a }, d); }
+    var off = d.cw * 0.34;
+    els.forEach(function (e) { e.classList.remove('sel'); setFlip(e, false); });
     S.sel = null;
-    clearEls();
-    fill(0);
-    updateUI();
-    toast('Gemischt');
+    // 1. zum Päckchen
+    els.forEach(function (e, i) { e.style.zIndex = 10 + (n - i); move(e, pile(i, 0, (i % 3 - 1) * 1.5), 340, i * 22); });
+    // 2. Päckchen teilen: eine Hälfte nach links, die andere nach rechts
+    ph(340 + n * 22 + 40, function () {
+      els.forEach(function (e, i) { var l = i % 2 === 0; move(e, pile(i, l ? -off : off, l ? -5 : 5), 260, 0); });
+    });
+    // 3. ineinanderschieben: neue Reihenfolge, die Karten wechseln beim Zusammenrutschen die Lage
+    ph(340 + n * 22 + 40 + 300, function () {
+      vis.forEach(function (id, i) { var e = S.els[id]; e.style.zIndex = 10 + (n - i); move(e, pile(i, 0, (i % 3 - 1) * 1.5), 280, i * 30); });
+    });
+    // 4. neu auffächern
+    ph(340 + n * 22 + 40 + 300 + 280 + n * 30 + 60, function () {
+      S.shuffling = false;
+      vis.forEach(function (id, i) { var e = S.els[id]; e.style.transition = ''; e.style.transitionDelay = (i * 60 * k) + 'ms'; });
+      layout(); updateUI();
+      setTimeout(function () { vis.forEach(function (id) { if (S.els[id]) S.els[id].style.transitionDelay = ''; }); }, (n * 60 + 900) * k);
+      toast('Gemischt');
+    });
   }
 
   stage.addEventListener('click', function (e) {
     if (e.target.closest('#endBox, #player')) return;
     var f = e.target.closest('.fcard');
+    if (S.shuffling) return;
     if (!f) { deselect(); return; }
     var id = f.dataset.id;
     if (!S.els[id]) return;
     if (e.target.closest('.pinbtn') && S.sel === id) { togglePin(id); return; }
     if (S.sel !== id) { select(id); return; }
     var c = S.els[id];
-    if (TM.id === id) return;
     if (!c._flipped) flip();
     // Lösung angeklickt: Karte verschwindet hinter den Stapel (erst, wenn die Drehung fast fertig ist)
     else if (Date.now() - (c._flippedAt || 0) > flipMs() * 0.85) rate(true);
@@ -1359,14 +1613,19 @@
   $('badBtn').addEventListener('click', function () { rate(false); });
   $('modeAllBtn').addEventListener('click', function () { S.mode = 'alle'; rebuildStudy(); });
   $('shuffleBtn').addEventListener('click', shuffle);
-  $('shelf').addEventListener('click', recall);
+  $('shelf').addEventListener('click', function () { recall(S.two ? 'skip' : null); });
+  $('shelf2').addEventListener('click', function () { recall('bad'); });
   $('newRound').addEventListener('click', rebuildStudy);
+  $('endLater').addEventListener('click', function () { recall(S.two ? 'skip' : null); });
+  $('endBad').addEventListener('click', function () { recall('bad'); });
+  $('endAll').addEventListener('click', function () { recall(); });
+  $('endTomorrow').addEventListener('click', snoozeLater);
   $('examBtn').addEventListener('click', startExam);
   var resizeT = 0;
   window.addEventListener('resize', function () {   // gebündelt: höchstens ein Neuaufbau pro Frame
     cancelAnimationFrame(resizeT);
     resizeT = requestAnimationFrame(function () {
-      if (current === 'study' && !stage.hidden) layout();
+      if (current === 'study' && !stage.hidden) { var was = S.two; layout(); if (S.two !== was) renderShelf(); }
       if (current === 'opts') renderDrawing();
     });
   });
@@ -1466,7 +1725,7 @@
       var sel = v.slice(r[0], r[1]);
       if (taken(v, r)) { toast('Dieses Wort ist schon eine Lücke'); q.focus(); return; }
       q.value = v.slice(0, r[0]) + '{{' + sel + '}}' + v.slice(r[1]);
-      var pos = r[0] + sel.length + 4; q.focus(); q.setSelectionRange(pos, pos); upd();
+      var pos = r[0] + sel.length + 4; q.focus(); q.setSelectionRange(pos, pos); q.dispatchEvent(new Event('input'));   // input: Knopfbeschriftung und Lösungsfeld ziehen nach
     });
     ['input', 'keyup', 'mouseup', 'touchend', 'select', 'focus'].forEach(function (ev) { q.addEventListener(ev, upd); });
     document.addEventListener('selectionchange', function () { if (document.activeElement === q) upd(); });
@@ -1562,13 +1821,15 @@
     items.forEach(function (c) {
       var item = el('div', 'item');
       var box = el('div', 'txtbox');
-      var cp = el('p', 'cat', c.cat), cd = el('i', 'dot'); cd.style.background = catColor(c.cat); cp.insertBefore(cd, cp.firstChild);
+      var cp = el('p', 'cat', c.cat === DEF ? trs(c.cat) : c.cat), cd = el('i', 'dot'); cd.style.background = catColor(c.cat); cp.insertBefore(cd, cp.firstChild);
+      var qp = el('p', 'q', c.q), ap = el('p', 'a', c.a); cp.setAttribute('data-nt', ''); qp.setAttribute('data-nt', ''); ap.setAttribute('data-nt', '');
       box.appendChild(cp);
-      box.appendChild(el('p', 'q', c.q));
-      box.appendChild(el('p', 'a', c.a));
+      box.appendChild(qp);
+      box.appendChild(ap);
       if (c.img) { var th = el('img', 'thumb'); th.src = c.img; th.alt = 'Bild zur Frage'; box.appendChild(th); }
       if (c.tags && c.tags.length) {
         var tl = el('p', 'tags');
+        tl.setAttribute('data-nt', '');
         c.tags.forEach(function (t) {
           var tb = el('button', 'tagpill', '#' + t); tb.type = 'button';
           tb.addEventListener('click', function () { $('listSearch').value = t; renderList(); });
@@ -1627,10 +1888,10 @@
   });
 
   /* Demo: 10 Karten für Klasse 7 bis 10 (dieselben wie in demo-karten.json) */
-  var DEMO = {"version": 2, "cats": ["Mathe", "Physik", "Chemie", "Biologie", "Geschichte", "Erdkunde"], "cards": [{"id": "demo01", "cat": "Mathe", "q": "Wie lautet der Satz des Pythagoras?", "a": "In einem rechtwinkligen Dreieck gilt a² + b² = c². c ist die Hypotenuse, also die Seite gegenüber dem rechten Winkel."}, {"id": "demo02", "cat": "Mathe", "q": "Löse die Gleichung 3x + 5 = 20.", "a": "Erst 5 abziehen: 3x = 15. Dann durch 3 teilen: x = 5."}, {"id": "demo03", "cat": "Mathe", "q": "Wie berechnet man den Flächeninhalt eines Kreises mit dem Radius r?", "a": "A = π · r². Beispiel: r = 3 cm ergibt etwa 28,3 cm²."}, {"id": "demo04", "cat": "Physik", "q": "Wie berechnet man die Geschwindigkeit?", "a": "v = s : t (Strecke geteilt durch Zeit). 120 km in 2 Stunden ergeben 60 km/h."}, {"id": "demo05", "cat": "Physik", "q": "Wie lautet das Ohmsche Gesetz?", "a": "U = R · I (Spannung = Widerstand mal Stromstärke). Bei 20 Ω und 0,5 A sind das 10 V."}, {"id": "demo06", "cat": "Chemie", "q": "Wie lauten die chemischen Formeln von Wasser und Kohlenstoffdioxid?", "a": "Wasser: H₂O. Kohlenstoffdioxid: CO₂."}, {"id": "demo07", "cat": "Biologie", "q": "Was passiert bei der Fotosynthese?", "a": "Pflanzen bilden mit Lichtenergie aus Wasser und Kohlenstoffdioxid Traubenzucker (Glucose) und Sauerstoff. Das geschieht in den Chloroplasten."}, {"id": "demo08", "cat": "Geschichte", "q": "Wann fiel die Berliner Mauer und wann wurde Deutschland wiedervereinigt?", "a": "Die Mauer fiel am 9. November 1989. Die Wiedervereinigung war am 3. Oktober 1990."}, {"id": "demo09", "cat": "Geschichte", "q": "Wann begann der Erste Weltkrieg und was war der Auslöser?", "a": "1914. Auslöser war das Attentat von Sarajevo auf den österreichischen Thronfolger Franz Ferdinand."}, {"id": "demo10", "cat": "Erdkunde", "q": "Wie heißt die Hauptstadt von Kanada?", "a": "Ottawa. Nicht Toronto und nicht Montreal."}]};
+  var DEMO = {"version": 2, "cats": ["Mathe", "Physik", "Chemie", "Biologie", "Geschichte", "Erdkunde"], "cards": [{"id": "demo01", "cat": "Mathe", "q": "Im rechtwinkligen Dreieck gilt a² + b² = c². Die längste Seite c heißt {{Hypotenuse}}.", "a": ""}, {"id": "demo02", "cat": "Mathe", "q": "Löse die Gleichung 3x + 5 = 20.", "a": "Erst 5 abziehen: 3x = 15. Dann durch 3 teilen: x = 5."}, {"id": "demo03", "cat": "Mathe", "q": "Wie berechnet man den Flächeninhalt eines Kreises mit dem Radius r?", "a": "A = π · r². Beispiel: r = 3 cm ergibt etwa 28,3 cm²."}, {"id": "demo04", "cat": "Physik", "q": "Wie berechnet man die Geschwindigkeit?", "a": "v = s : t (Strecke geteilt durch Zeit). 120 km in 2 Stunden ergeben 60 km/h."}, {"id": "demo05", "cat": "Physik", "q": "Nach dem Ohmschen Gesetz ist die Spannung gleich Widerstand mal {{Stromstärke}}.", "a": ""}, {"id": "demo06", "cat": "Chemie", "q": "Die chemische Formel von Wasser ist {{H₂O}}, die von Kohlenstoffdioxid {{CO₂}}.", "a": ""}, {"id": "demo07", "cat": "Biologie", "q": "Bei der {{Fotosynthese}} bilden Pflanzen aus Wasser und Kohlenstoffdioxid Traubenzucker und {{Sauerstoff}}.", "a": ""}, {"id": "demo08", "cat": "Geschichte", "q": "Die Berliner Mauer fiel am 9. November {{1989}}.", "a": ""}, {"id": "demo09", "cat": "Geschichte", "q": "Wann begann der Erste Weltkrieg und was war der Auslöser?", "a": "1914. Auslöser war das Attentat von Sarajevo auf den österreichischen Thronfolger Franz Ferdinand."}, {"id": "demo10", "cat": "Erdkunde", "q": "Die Hauptstadt von Kanada heißt {{Ottawa}}, nicht Toronto und nicht Montreal.", "a": ""}]};
   var DEMOCARDS = null;
   function demoCards() {
-    if (!DEMOCARDS) DEMOCARDS = parseData(DEMO).cards.map(function (c, i) { return { id: 'demo' + (i + 1), q: c.q, a: c.a, cat: c.cat }; });
+    if (!DEMOCARDS) DEMOCARDS = parseData(DEMO).cards.map(function (c, i) { return { id: 'demo' + (i + 1), q: trs(c.q), a: trs(c.a), cat: trs(c.cat) }; });
     return DEMOCARDS;
   }
   /* Beim Wechseln fliegen die alten Karten nacheinander hinter den Stapel, danach kommen die neuen aus dem Stapel */
@@ -1844,7 +2105,8 @@
     db.cats.forEach(function (name) {
       var item = el('div', 'item');
       var box = el('div', 'txtbox');
-      var qn = el('p', 'q', name), dt = el('i', 'dot'); dt.style.background = catColor(name); qn.insertBefore(dt, qn.firstChild);
+      var qn = el('p', 'q', name === DEF ? trs(name) : name), dt = el('i', 'dot'); dt.style.background = catColor(name); qn.insertBefore(dt, qn.firstChild);
+      qn.setAttribute('data-nt', '');
       box.appendChild(qn);
       box.appendChild(el('p', 'a', countIn(name) + ' Karten'));
       var acts = el('div', 'acts');
@@ -2044,7 +2306,7 @@
       lockBox.appendChild(inner);
       var ov = el('div', 'lockov'), card = el('div', 'lockcard');
       card.appendChild(el('strong', null, 'Mehr Optionen mit Konto'));
-      card.appendChild(el('p', null, 'Lernarten, Player und Statistik gibt es nach der Anmeldung. Das Konto ist kostenlos.'));
+      card.appendChild(el('p', null, 'Lernarten, Player und Fortschritt gibt es nach der Anmeldung. Das Konto ist kostenlos.'));
       var lb = el('div', 'tools');
       var l1 = el('button', 'btn primary', 'Konto anlegen'); l1.type = 'button'; l1.addEventListener('click', function () { openAcc('register'); });
       var l2 = el('button', 'btn', 'Anmelden'); l2.type = 'button'; l2.addEventListener('click', function () { openAcc('login'); });
@@ -2054,12 +2316,10 @@
     }
     var gl = group('Lernstand');
     gl.appendChild(el('p', null, 'Gewusste Karten rutschen ein Fach höher und kommen später wieder. Nochmal schickt sie zurück in Fach 1.'));
-    if (PRO.statButtons) PRO.statButtons(gl);
-    else if (optLock) { var sl = el('button', 'btn', 'Statistik (mit Konto)'); sl.type = 'button'; sl.addEventListener('click', proNeed); gl.appendChild(sl); }
     var rb = el('button', 'btn danger', 'Lernstand zurücksetzen'); rb.type = 'button';
     rb.addEventListener('click', function () {
       confirmDlg('Lernstand zurücksetzen?', 'Alle Karten gelten wieder als neu, Tagesziel und Serie starten bei null. Die Karten bleiben.', function () {
-        db.cards.forEach(function (c) { delete c.n; delete c.box; delete c.due; delete c.last; });
+        db.cards.forEach(function (c) { delete c.n; delete c.box; delete c.due; delete c.last; delete c.snz; delete c.mst; });
         db.log = {};
         save(); toast('Lernstand zurückgesetzt');
       }, 'Zurücksetzen', true);
@@ -2082,7 +2342,7 @@
     }
 
     var dsb = el('button', 'btn', 'Datenschutz'); dsb.type = 'button';
-    dsb.addEventListener('click', function () { show('help'); var t = $('datenschutz'); if (t) t.scrollIntoView({ behavior: CFG.animation.an ? 'smooth' : 'auto', block: 'start' }); });
+    dsb.addEventListener('click', function () { if (!$('view-help')) { openLegal('dsDlg'); return; } show('help'); var t = $('datenschutz'); if (t) t.scrollIntoView({ behavior: CFG.animation.an ? 'smooth' : 'auto', block: 'start' }); });
     gu.appendChild(dsb);
 
     var g5 = group('Speicherort');
@@ -2242,7 +2502,7 @@
     toast('Aktualisiert auf ' + info.version);
     setTimeout(function () { location.reload(); }, 1000);
   }
-  if (UPDATE_REPO !== 'KONTO/REPO' && /^[\w.-]+\/[\w.-]+$/.test(UPDATE_REPO)) {   // Anbieter im Datenschutz: das GitHub-Konto des Repos
+  if ($('anbieter') && UPDATE_REPO !== 'KONTO/REPO' && /^[\w.-]+\/[\w.-]+$/.test(UPDATE_REPO)) {   // Anbieter im Datenschutz: das GitHub-Konto des Repos
     $('anbieter').textContent = 'github.com/' + UPDATE_REPO.split('/')[0] + '. Fragen zum Datenschutz stellst du dort.';
   }
   setTimeout(function () { checkUpdate(false); }, 3000);
@@ -2265,6 +2525,7 @@
     else try { r = await fetch(kurl(a), opt); j = await r.json(); } catch (e) { return { ok: false, status: 0, err: 'Keine Verbindung zum Server.' }; }
     if (!j || typeof j !== 'object') return { ok: false, status: r.status, err: 'Unerwartete Antwort.' };
     j.status = r.status;
+    if (r.status === 404 && j.err === 'unbekannt') j.err = 'Das gibt es auf dem Server noch nicht. Die Serverdateien (api/) des Updates fehlen.';
     if (j.err === 'csrf' && !retried) { await kProbe(); return kapi(a, body, true); }
     if (j.csrf) K.csrf = j.csrf;
     if (j.code === 'auth' && K.user) { K.user = null; K.state = ''; clearTimeout(K.timer); K.timer = null; kUI(); toast('Bitte melde dich neu an.'); }
@@ -2286,17 +2547,23 @@
     var me = d.sess && d.users[d.sess] ? d.sess : '';
     var needs = ['data', 'save', 'password', 'delete'];
     if (needs.indexOf(a) >= 0 && !me) return no(401, 'Bitte melde dich an.', { code: 'auth' });
-    if (a === 'csrf') return ok({ csrf: 'test', ft: 'test', user: me ? { email: me } : null });
+    var nk = function (e) { return d.users[e] && d.users[e].nick || ''; };
+    var nickBad = function (n) { return n.length < 3 ? 'Der Nickname braucht mindestens 3 Zeichen.' : n.length > 20 ? 'Der Nickname darf höchstens 20 Zeichen haben.' : !/^[\p{L}\p{N}][\p{L}\p{N}._-]*$/u.test(n) ? 'Erlaubt sind Buchstaben, Zahlen sowie . _ - (nicht am Anfang).' : ''; };
+    var nickTaken = function (n, except) { return Object.keys(d.users).some(function (e) { return e !== except && nk(e).toLowerCase() === n.toLowerCase(); }); };
+    if (a.indexOf('nick-check') === 0) { var q = decodeURIComponent((a.split('&n=')[1] || '')).trim(), bad = nickBad(q); return ok(bad ? { valid: false, free: false, msg: bad } : { valid: true, free: !nickTaken(q, me), msg: '' }); }
+    if (a === 'nick') { var nn = String(b.nick || '').trim(); if (!me) return no(401, 'Bitte melde dich an.', { code: 'auth' }); if (nickBad(nn)) return no(400, nickBad(nn)); if (nickTaken(nn, me)) return no(409, 'Dieser Nickname ist schon vergeben.'); d.users[me].nick = nn; put(); return ok({ nick: nn, msg: 'Nickname gespeichert.' }); }
+    if (a === 'csrf') return ok({ csrf: 'test', ft: 'test', user: me ? { email: me, nick: nk(me) } : null });
     if (a === 'register') {
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return no(400, 'Bitte eine gültige E-Mail-Adresse eingeben.');
       if (String(b.password || '').length < 10) return no(400, 'Das Passwort braucht mindestens 10 Zeichen.');
-      if (!d.users[email]) { d.users[email] = { pw: await sha(b.password) }; put(); }
+      var rn = String(b.nick || '').trim(); if (nickBad(rn)) return no(400, nickBad(rn)); if (nickTaken(rn, '')) return no(409, 'Dieser Nickname ist schon vergeben.');
+      if (!d.users[email]) { d.users[email] = { pw: await sha(b.password), nick: rn }; put(); }
       return ok({ msg: 'Testmodus: Konto angelegt, die Bestätigung ist übersprungen. Du kannst dich anmelden.' });
     }
     if (a === 'login') {
       var u = d.users[email];
       if (!u || u.pw !== await sha(b.password || '')) return no(401, 'E-Mail oder Passwort stimmt nicht.');
-      d.sess = email; put(); return ok({ csrf: 'test', user: { email: email } });
+      d.sess = email; put(); return ok({ csrf: 'test', user: { email: email, nick: nk(email) } });
     }
     if (a === 'logout') { d.sess = ''; put(); return ok({ csrf: 'test' }); }
     if (a === 'verify') return ok({ msg: 'Testmodus: nichts zu bestätigen.' });
@@ -2335,29 +2602,33 @@
   }
   function hhmm() { var d = new Date(); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
   function kUI() {
-    var b = $('accBtn');
+    var b = $('accBtn'); playerOff();
     b.hidden = !K.on;
     b.classList.toggle('on', !!K.user && !K.paused && !/fehlgeschlagen|Zu viele/.test(K.state));
     b.classList.toggle('warn', !!K.user && (K.paused || /fehlgeschlagen|Zu viele/.test(K.state)));
     $('accTest').hidden = !K.mock;
+    b.querySelector('.lbl').textContent = K.user && K.user.nick ? K.user.nick : 'Konto'; greet();
     b.title = K.user ? 'Konto: ' + K.user.email + (K.state ? '. ' + K.state : '') : 'Anmelden oder registrieren';
     ['ftKt', 'landKt'].forEach(function (id) { $(id).hidden = !K.on; });
     $('dsKonto').hidden = !K.on;
     $('dsNoK').hidden = K.on; $('dsNoK2').hidden = K.on;
+    if (K.user && K.user.nickOn !== false && !K.user.nick && !K.nickAsked && K.probed) { K.nickAsked = true; setTimeout(function () { if (K.user && !K.user.nick) openAcc('nick'); }, 500); }   // ältere Konten: einmal pro Seitenaufruf nach dem Nickname fragen
     if (K.probed && K.on && !K.user && (PRO.options || proCached())) proDrop();
     if (K.user && !PRO.options) kProLoad();
+    if (current === 'prog') renderProg();
     if (current === 'opts' && optLock !== (K.on && !PRO.options)) renderOptions();
     document.querySelectorAll('.lbadge').forEach(function (n) { n.hidden = K.on; });
     if ($('accDlg').open && K.user) { $('acState').textContent = K.paused ? 'Abgleich pausiert. Tippe auf „Jetzt abgleichen“.' : K.state; }
   }
   /* Dialog-Ansichten */
-  var ACC_TITLE = { login: 'Anmelden', register: 'Konto anlegen', forgot: 'Passwort vergessen', newpw: 'Neues Passwort', account: 'Konto', chpw: 'Passwort ändern', del: 'Konto löschen', msg: 'Konto' };
+  var ACC_TITLE = { login: 'Anmelden', register: 'Konto anlegen', forgot: 'Passwort vergessen', newpw: 'Neues Passwort', account: 'Konto', chpw: 'Passwort ändern', del: 'Konto löschen', msg: 'Konto', nick: 'Nickname' };
   function accView(v, msg, err) {
     document.querySelectorAll('#accDlg [data-v]').forEach(function (n) { n.hidden = n.dataset.v !== v; });
     $('accErr').textContent = err || '';
     $('accMsg').textContent = msg || '';
     $('accTitle').textContent = ACC_TITLE[v];
-    if (v === 'account') { $('acMail').textContent = K.user ? K.user.email : ''; kUI(); }
+    if (v === 'account') { $('acMail').textContent = K.user ? K.user.email : ''; $('acNick').textContent = K.user && K.user.nick ? K.user.nick : 'noch keiner'; $('acNickEdit').textContent = K.user && K.user.nick ? 'ändern' : 'festlegen'; kUI(); }
+    if (v === 'nick') { $('nkIntro').textContent = K.user && K.user.nick ? 'Dein Nickname kann sich später ändern, er bleibt einmalig.' : 'Wähle einen Nickname. So heißt du in KarteiDeck.'; $('nkNick').value = K.user && K.user.nick ? K.user.nick : ''; nickLive($('nkNick'), $('nkNickSt'), true); $('nkLater').hidden = !!(K.user && K.user.nick); }
     var f = document.querySelector('#accDlg [data-v="' + v + '"] input:not(.hp)');
     if (f) setTimeout(function () { f.focus(); }, 30);
   }
@@ -2397,6 +2668,66 @@
     });
   }
   function accFail(j, dflt) { $('accErr').textContent = j.err || dflt; }
+  /* Passwort-Stärke: rechnet nur im Browser, das Passwort wird dafür nirgends hingeschickt. */
+  function pwRate(pw, ctx) {
+    var n = pw.length;
+    if (!n) return { l: 0, t: 'Noch leer', h: 'Mindestens 10 Zeichen.' };
+    var low = pw.toLowerCase(), letters = low.replace(/[^a-zäöüß]/g, '').replace(/ä/g, 'a').replace(/ö/g, 'o').replace(/ü/g, 'u');
+    if (n < 10) return { l: 1, t: 'Zu kurz', h: 'Noch ' + (10 - n) + (10 - n === 1 ? ' Zeichen.' : ' Zeichen.') };
+    var common = ['passwort', 'password', 'kartenbox', 'karteideck', 'qwertz', 'qwertzuiop', 'qwerty', 'abcdefgh', 'iloveyou', 'letmein', 'willkommen', 'hallo', 'halloween', 'fussball', 'schatz'];
+    if (/^\d+$/.test(pw) || common.indexOf(letters) >= 0 || new Set(pw.split('')).size < 4) return { l: 1, t: 'Zu leicht', h: 'Das erraten andere sofort.' };
+    var own = [];
+    (ctx || []).forEach(function (x) { x = String(x || '').toLowerCase().split('@')[0]; if (x.length >= 4) own.push(x); });
+    for (var i = 0; i < own.length; i++) if (low.indexOf(own[i]) >= 0) return { l: 1, t: 'Zu leicht', h: 'Kein Teil von Nickname oder E-Mail verwenden.' };
+    var cls = (/[a-zäöüß]/.test(pw) ? 1 : 0) + (/[A-ZÄÖÜ]/.test(pw) ? 1 : 0) + (/\d/.test(pw) ? 1 : 0) + (/[^A-Za-z0-9äöüÄÖÜß]/.test(pw) ? 1 : 0);
+    var p = cls + (n >= 12 ? 1 : 0) + (n >= 16 ? 1 : 0) + (n >= 20 ? 1 : 0);
+    if (/(.)\1{2,}/.test(pw)) p -= 1;                                              // aaa
+    if (/(0123|1234|2345|3456|4567|5678|6789|abcd|bcde|cdef|qwer|wert|asdf|yxcv)/.test(low)) p -= 1;   // Folgen
+    if (new Set(pw.split('')).size < n * 0.5) p -= 1;                               // viele Wiederholungen
+    var l = p <= 3 ? 2 : p <= 5 ? 3 : 4;
+    var t = ['', '', 'Okay', 'Gut', 'Stark'][l];
+    var h = l === 4 ? 'Sehr gut.' : n < 14 ? 'Länger macht es stärker: ab 14 Zeichen.' : cls < 3 ? 'Mische Groß- und Kleinbuchstaben, Zahlen, Zeichen.' : 'Noch etwas länger wäre besser.';
+    return { l: l, t: t, h: h };
+  }
+  function pwMeter(inp, ctx) {
+    var m = document.querySelector('.pwm[data-for="' + inp.id + '"]');
+    function upd() { var r = pwRate(inp.value, typeof ctx === 'function' ? ctx() : ctx); m.dataset.l = r.l; m.querySelector('b').textContent = r.t; m.querySelector('span').textContent = r.h; inp.__lvl = r.l; }
+    inp.addEventListener('input', upd); inp.__upd = upd; upd();
+  }
+  /* Nickname: prüft beim Tippen, ob der Name gültig und frei ist */
+  function nickLive(inp, st, now) {
+    var tmr, seq = 0, base = st.textContent;
+    inp.__lastOk = false;
+    function set(s, m) { st.dataset.s = s; st.textContent = m; }
+    async function run() {
+      var v = inp.value.trim(), my = ++seq;
+      if (!v) { inp.__lastOk = false; set('', base); return; }
+      if (v.length < 3) { inp.__lastOk = false; set('bad', 'Mindestens 3 Zeichen.'); return; }
+      set('wait', 'Prüfe …');
+      var j = await kapi('nick-check&n=' + encodeURIComponent(v));
+      if (my !== seq) return;
+      if (!j.ok) { inp.__lastOk = false; set('bad', j.status === 0 ? 'Keine Verbindung. Der Name wird später geprüft.' : (j.err || 'Das konnte nicht geprüft werden.')); return; }
+      inp.__lastOk = !!(j.valid && j.free);
+      set(j.valid && j.free ? 'ok' : 'bad', j.valid ? (j.free ? 'Frei, der Name gehört dir.' : 'Schon vergeben. Probier einen anderen.') : j.msg);
+    }
+    if (!inp.__nl) { inp.__nl = true; inp.addEventListener('input', function () { clearTimeout(tmr); inp.__lastOk = false; tmr = setTimeout(run, 350); }); }
+    inp.__run = run;
+    if (now) { seq++; if (inp.value.trim()) run(); else set('', base); }
+  }
+  nickLive($('rgNick'), $('rgNickSt'));
+  pwMeter($('rgPw'), function () { return [$('rgNick').value, $('rgMail').value]; });
+  pwMeter($('cpNew'), function () { return [K.user && K.user.nick, K.user && K.user.email]; });
+  pwMeter($('npPw'), []);
+  $('rgNick').addEventListener('input', function () { $('rgPw').__upd(); });
+  $('rgMail').addEventListener('input', function () { $('rgPw').__upd(); });
+  accForm('nick', async function () {
+    var v = $('nkNick').value.trim();
+    if (v.length < 3) return accFail({}, 'Bitte einen Nickname mit mindestens 3 Zeichen eingeben.');
+    var j = await kapi('nick', { nick: v });
+    if (!j.ok) return accFail(j, 'Das hat nicht geklappt.');
+    K.user.nick = j.nick; kUI(); accView('account', j.msg);
+  });
+  $('nkLater').addEventListener('click', function () { $('accDlg').close(); });
   accForm('login', async function () {
     var mail = $('lgMail').value.trim(), pw = $('lgPw').value;
     if (!mail || !pw) return accFail({}, 'Bitte E-Mail und Passwort eingeben.');
@@ -2406,12 +2737,15 @@
     accView('account', 'Angemeldet.'); kUI(); kPull();
   });
   accForm('register', async function () {
-    var mail = $('rgMail').value.trim(), pw = $('rgPw').value;
-    if (!mail || !pw) return accFail({}, 'Bitte E-Mail und Passwort eingeben.');
+    var mail = $('rgMail').value.trim(), pw = $('rgPw').value, nick = $('rgNick').value.trim();
+    if (!nick || !mail || !pw) return accFail({}, 'Bitte Nickname, E-Mail und Passwort eingeben.');
+    if (nick.length < 3) return accFail({}, 'Der Nickname braucht mindestens 3 Zeichen.');
+    if ($('rgNickSt').dataset.s === 'bad') return accFail({}, 'Bitte einen anderen Nickname wählen.');
+    if ($('rgPw').__lvl < 2) return accFail({}, 'Das Passwort ist noch zu schwach.');
     if (pw !== $('rgPw2').value) return accFail({}, 'Die Passwörter sind nicht gleich.');
-    var j = await kapi('register', { email: mail, password: pw, website: $('rgHp').value });
+    var j = await kapi('register', { nick: nick, email: mail, password: pw, website: $('rgHp').value });
     if (!j.ok) return accFail(j, 'Registrierung fehlgeschlagen.');
-    $('rgPw').value = ''; $('rgPw2').value = '';
+    $('rgPw').value = ''; $('rgPw2').value = ''; $('rgNick').value = ''; $('rgPw').__upd(); $('rgNickSt').dataset.s = '';
     accView('msg', j.msg);
   });
   accForm('forgot', async function () {
@@ -2604,33 +2938,56 @@
   function proWelcome() {
     var key = 'kartenbox-konto-hinweis';
     try { if (localStorage.getItem(key)) return; localStorage.setItem(key, '1'); } catch (e) { return; }
-    setTimeout(function () {
-      confirmDlg('Dein Konto ist aktiv', 'Unter Optionen findest du jetzt Lernarten wie Antwort tippen, Wortbank und Vorlesen, dazu die Statistik. Damit lernst du gezielter.',
+    var tries = 0;
+    setTimeout(function w() {
+      if (K.user && !K.user.nick && $('accDlg').open && tries++ < 120) { setTimeout(w, 1000); return; }   // erst der Nickname, dann der Hinweis – nie zwei Dialoge übereinander
+      confirmDlg('Dein Konto ist aktiv', 'Unter Optionen findest du jetzt Lernarten wie Antwort tippen, Wortbank und Vorlesen, dazu den Tab Fortschritt. Damit lernst du gezielter.',
         function () { if ($('accDlg').open) $('accDlg').close(); show('opts'); }, 'Zu den Optionen', false, 'Später');
     }, 600);
+  }
+  /* Online lädt die Seite die Zusatzfunktionen als eigenes Skript von der Schnittstelle. So braucht die Content-Security-Policy kein 'unsafe-inline'. Offline liefert der Service Worker die zuletzt geladene Fassung. */
+  var proWait = null;   // läuft schon ein Ladevorgang, wartet der zweite darauf, statt das Skript noch einmal auszuführen (sonst hätte jede Taste im Player zwei Handler und jeder Klick würde sich selbst aufheben)
+  function proExt(done) {
+    if (PRO.options) { done(true); return; }
+    if (proWait) { proWait.push(done); return; }
+    proWait = [done];
+    var sc = document.createElement('script');
+    var fin = function (ok) { var w = proWait; proWait = null; sc.remove(); w.forEach(function (f) { f(ok); }); };
+    sc.src = kurl('pro');
+    sc.onload = function () { fin(!!PRO.options); };
+    sc.onerror = function () { fin(false); };
+    document.head.appendChild(sc);
   }
   async function kProLoad() {
     if (PRO.options || K.proBusy) return;
     K.proBusy = true;
     try {
-      var code = '';
-      if (K.mock) code = PRO_EMBED || '';
-      else { var r = await fetch(kurl('pro'), { credentials: 'same-origin', cache: 'no-store', referrerPolicy: 'no-referrer' }); if (r.ok) code = await r.text(); }
-      if (code && proInject(code)) { try { localStorage.setItem(PROKEY, code); } catch (e) {} proApply(); proWelcome(); }
+      if (K.mock) {
+        var code = PRO_EMBED || '';
+        if (code && proInject(code)) { try { localStorage.setItem(PROKEY, code); } catch (e) {} proApply(); proWelcome(); }
+      } else {
+        var ok = await new Promise(function (res) { proExt(res); });
+        if (ok) { try { localStorage.setItem(PROKEY, '1'); } catch (e) {} proApply(); proWelcome(); }
+      }
     } catch (e) {}
     K.proBusy = false;
   }
   function proDrop() {
     var was = !!PRO.options;
     try { localStorage.removeItem(PROKEY); } catch (e) {}
-    if (was) setTimeout(function () { location.reload(); }, 500);
+    try { if (window.caches) caches.keys().then(function (ks) { ks.forEach(function (k) { caches.open(k).then(function (c) { c.keys().then(function (rs) { rs.forEach(function (r) { if (/[?&]a=pro(&|$)/.test(r.url)) c.delete(r); }); }); }); }); }); } catch (e) {}
+    if (was) { try { sessionStorage.setItem('kartenbox-neuladen', '1'); } catch (e) {} setTimeout(function () { location.reload(); }, 500); }   // Neuladen nach dem Abmelden: danach nicht die Startseite zeigen
   }
   function proBoot() {
     var code = '';
     if (PRO_EMBED && !CFG.konto.api && !CFG.konto.test) code = PRO_EMBED;
     else try { code = localStorage.getItem(PROKEY) || ''; } catch (e) {}
-    if (code) proInject(code);
+    if (!code) return;
+    if (PRO_EMBED || !CFG.konto.api) proInject(code);   // lokale Datei: eingebettet
+    else proExt(function (ok) { if (ok) proApply(); });
   }
+  /* Online soll die Adresse nur die Domain zeigen, nicht /karteikarten.html */
+  try { if (CFG.seite && CFG.seite.url && location.protocol.indexOf('http') === 0 && /\/karteikarten\.html$/.test(location.pathname)) history.replaceState(null, '', location.pathname.replace(/karteikarten\.html$/, '') + location.search + location.hash); } catch (e) {}
   async function kStart() {
     proBoot();
     if (!CFG.konto.api && !CFG.konto.test) return;
@@ -2649,17 +3006,44 @@
     if (K.user) kPull();
   }
 
+  /* Startseite: Elemente setzen sich beim Hereinscrollen. Nur Deckkraft und Verschiebung, einmal pro Element.
+     Bei reduzierter Bewegung (Windows, iOS, Android), ohne IntersectionObserver oder ohne Skript bleibt alles sofort sichtbar. */
+  var landRv = false;
+  function landReveal() {
+    if (landRv) return; landRv = true;
+    var L = $('landing');
+    function sh() { L.querySelector('.ltop').classList.toggle('sh', L.scrollTop > 4); }
+    L.addEventListener('scroll', sh, { passive: true }); sh();
+    if (!('IntersectionObserver' in window)) return;
+    var first = true, io = new IntersectionObserver(function (es) {
+      var hit = es.filter(function (e) { return e.intersectionRatio >= 0.12; }).map(function (e) { return { el: e.target, r: e.target.getBoundingClientRect() }; });
+      hit.forEach(function (h) {   // Spalte in der Reihe bestimmt die Verzögerung: links zuerst
+        var rank = hit.filter(function (o) { return Math.abs(o.r.top - h.r.top) < 6 && o.r.left < h.r.left - 6; }).length;
+        h.el.style.setProperty('--d', ((first ? .3 : 0) + rank * .08).toFixed(2) + 's');
+        h.el.classList.add('rvin');
+      });
+      if (hit.length) first = false;
+      es.forEach(function (e) {   // nur was unten wieder aus dem Bild läuft, baut sich ab; was oben fertig aufgebaut ist, bleibt stehen
+        var rb = e.rootBounds;
+        if (e.intersectionRatio < 0.12 && rb && e.boundingClientRect.top > rb.top + rb.height / 2) e.target.classList.remove('rvin');
+      });
+    }, { root: L, rootMargin: '0px 0px -8% 0px', threshold: [0, 0.12] });
+    [].forEach.call(L.querySelectorAll('.lstep, .feat, .lnote, .lend .llead, .lend .lrow'), function (el) { el.classList.add('rv'); io.observe(el); });
+  }
+
   /* Startseite: je nach Einstellung start.seite immer, einmal am Tag, nur beim ersten Mal oder nie */
   var LAND_KEY = 'kartenbox-start', landShown = false;
   function landing() {
     var m = CFG.start.seite;
     if (m === 'aus') return;
     if (/[?&](verify|reset)=/.test(location.search)) { landShown = true; return; }
+    try { if (sessionStorage.getItem('kartenbox-neuladen')) { sessionStorage.removeItem('kartenbox-neuladen'); landShown = true; return; } } catch (e) {}
     var today = dayKey(), seen = '';
     try { seen = localStorage.getItem(LAND_KEY) || ''; } catch (e) {}
     if ((m === 'einmal' && seen) || (m === 'taeglich' && seen === today)) return;
     try { localStorage.setItem(LAND_KEY, today); } catch (e) {}
     landShown = true;
+    landReveal();
     $('landing').showModal();
   }
   ['landGo', 'landGo2', 'landClose'].forEach(function (id) { $(id).addEventListener('click', function () { $('landing').close(); }); });
@@ -2681,7 +3065,7 @@
   document.querySelectorAll('dialog.legal [data-close]').forEach(function (b) {
     b.addEventListener('click', function () { b.closest('dialog').close(); });
   });
-  $('ftHome').addEventListener('click', function () { landShown = true; $('landing').showModal(); });
+  $('ftHome').addEventListener('click', function () { landShown = true; landReveal(); $('landing').showModal(); });
 
   /* Beim ersten Öffnen am Tag: kurzer Hinweis auf die Optionen (kein Muss) */
   var DAY_KEY = 'kartenbox-hinweis-tag';
@@ -2695,9 +3079,61 @@
   setTimeout(dayHint, 2200);
 
   load();
+  /* Bild vergrößern. Das Bild fliegt aus seiner Position (Vorschau oder Bild-Knopf) in die Mitte und beim Schließen zurück. */
+  (function () {
+    var dlg = $('zoomDlg'), big = $('zoomImg'), src = null, srcBtn = false, busy = false;
+    function shown(im) {   // sichtbare Bildfläche (object-fit: contain) innerhalb des Elements
+      var b = im.getBoundingClientRect(), w = im.naturalWidth || b.width, h = im.naturalHeight || b.height, k = Math.min(b.width / w, b.height / h);
+      return { left: b.left + (b.width - w * k) / 2, top: b.top + (b.height - h * k) / 2, width: w * k, height: h * k };
+    }
+    function flip(from, uni) {   // Transform, der das große Bild auf die Fläche 'from' setzt; uni: gleichmäßig verkleinert, Mitte auf Mitte
+      var to = big.getBoundingClientRect();
+      if (uni) {
+        var s = from.width / to.width, cx = from.left + from.width / 2, cy = from.top + from.height / 2;
+        return 'translate(' + (cx - to.width * s / 2 - to.left) + 'px,' + (cy - to.height * s / 2 - to.top) + 'px) scale(' + s + ')';
+      }
+      return 'translate(' + (from.left - to.left) + 'px,' + (from.top - to.top) + 'px) scale(' + (from.width / to.width) + ',' + (from.height / to.height) + ')';
+    }
+    function area() { return srcBtn ? src.getBoundingClientRect() : shown(src); }
+    function open(el, url, isBtn) {
+      if (busy || !url) return;
+      src = el; srcBtn = isBtn; busy = true;
+      big.src = url; big.alt = 'Vergrößertes Bild';
+      var from = area();
+      dlg.showModal();
+      void dlg.offsetWidth;
+      dlg.classList.add('on');
+      if (!from.width) { big.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 120 }); busy = false; $('zoomX').focus(); return; }
+      if (!isBtn) el.style.visibility = 'hidden';
+      big.animate([{ transform: flip(from, isBtn), opacity: isBtn ? .2 : 1 }, { transform: 'none', opacity: 1 }], { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' }).onfinish = function () { busy = false; };
+      $('zoomX').focus();
+    }
+    function close() {
+      if (busy || !dlg.open) return;
+      busy = true; dlg.classList.remove('on');
+      var done = function () { dlg.close(); if (src && !srcBtn) src.style.visibility = ''; src = null; busy = false; };
+      if (!src || !src.isConnected || !src.offsetWidth) { big.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160 }).onfinish = done; return; }
+      var a = big.animate([{ transform: 'none', opacity: 1 }, { transform: flip(area(), srcBtn), opacity: srcBtn ? .2 : 1 }], { duration: 340, easing: 'cubic-bezier(.5,0,.75,.2)', fill: 'forwards' });
+      a.onfinish = function () { done(); a.cancel(); };
+    }
+    document.addEventListener('click', function (e) {
+      var t = e.target.closest && e.target.closest('.fcard.sel .picbtn, img.thumb, #newImgPrev, #editImgPrev');
+      if (!t || t.hidden) return;
+      e.stopPropagation(); e.preventDefault();
+      if (t.classList.contains('picbtn')) open(t, t._src, true); else open(t, t.src, false);
+    }, true);
+    dlg.addEventListener('click', close);
+    dlg.addEventListener('cancel', function (e) { e.preventDefault(); close(); });
+  })();
+
   rebuildStudy();
   renderFile();
   fileRestore();
   landing();
+  try {
+    var sicht = sessionStorage.getItem('kartenbox-sicht'); sessionStorage.removeItem('kartenbox-sicht');   // nach dem Sprachwechsel dort weitermachen, wo man war
+    if (sicht === 'land') { landShown = true; landReveal(); $('landing').showModal(); }
+    else if (sicht && sicht !== 'study' && $('view-' + sicht)) show(sicht);
+  } catch (e) {}
   kStart();
 })();
