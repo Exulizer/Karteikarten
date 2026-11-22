@@ -22,7 +22,7 @@ Der Schalter **Demo** zeigt die App mit Beispielkarten.
 - Lernarten: **Lückentext**, **Antwort tippen**, **rückwärts**, **Prüfung mit Note**, **Vorlesen**
 - **Bilder**, **Tags** und Suche
 - Import aus **CSV, Anki und Quizlet**, Export als CSV, **Drucken**
-- **Fortschritt** (Tag, Monat, Jahr) mit Kalender, Stempeln und Tagesziel-Siegel
+- **Fortschritt** (Tag, Monat, Jahr) mit Kalender, Stempeln und Tagesziel-Siegel, 7-Tage-Vorschau, schwersten Karten und Jahresraster (ein Kästchen pro Tag)
 - **Deutsch und Englisch**, umschaltbar oben neben „Demo“
 - Karten **speichern, laden und teilen** (Datei per E-Mail, Discord …)
 - Hilfe mit FAQ direkt in der App
@@ -51,6 +51,9 @@ Ohne Server läuft alles wie bisher lokal. Mit PHP 8.1 oder neuer (und `api/` ne
 - Lokal testen: `php -S 127.0.0.1:8000` im App-Ordner, dann `http://127.0.0.1:8000/karteikarten.html` öffnen. Mails stehen dann in `api/data/mail.log`.
 - Ohne Datenbank: Standard ist der Datei-Speicher (`api/data/store.json`) nur für Tests. Für den Betrieb `api/schema.sql` einspielen und in `api/config.local.php` (Vorlage: `config.local.php.example`) `store` auf `pdo` stellen.
 - Schutz: Passwörter mit Argon2id, Sitzungs-Cookie mit `HttpOnly`, `SameSite` und `Secure` (bei https), CSRF-Token, Herkunftsprüfung, Rate-Limit für Anmeldung, Registrierung, Passwort-Reset und Kontakt (gespeichert wird nur ein Hash der IP), E-Mail-Bestätigung, Honigtopf im Kontaktformular, Mail-Header-Schutz.
+- Löschschutz: Stehen plötzlich weniger als 40 % der Karten da (ab 10 Karten), sendet die App nichts und fragt erst nach.
+- Frühere Stände: Beim Überschreiben legt der Server eine Sicherung an (Tabelle `kd_kdv`, wird automatisch erstellt). Im Konto unter „Frühere Stände“ lässt sich ein Stand zurückholen.
+- Bestätigungsmail erneut senden: Beim Anmelden mit unbestätigter Adresse gibt es einen Knopf dafür (begrenzt pro IP und Adresse).
 - Vor dem Start: `anbieter` in `einstellungen.js` ausfüllen (Impressum, Datenschutz), `site_url`, `mail_from` und `contact_to` setzen, `.htaccess` mit Header prüfen (securityheaders.com), HTTPS erzwingen.
 
 ## Updates
