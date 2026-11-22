@@ -1,5 +1,5 @@
 {
-  "_hinweis": "Standardwerte der Kartenbox. Zum Ändern die Werte in einstellungen.js eintragen oder im Tab Optionen einstellen.",
+  "_hinweis": "Standardwerte des KarteiDecks. Zum Ändern die Werte in einstellungen.js eintragen oder im Tab Optionen einstellen.",
   "schrift": {
     "groesse": 18,
     "zeilenabstand": 1.6,
@@ -33,5 +33,22 @@
   },
   "update": {
     "pruefen": true
+  },
+  "start": {
+    "seite": "immer"
+  },
+  "seite": {
+    "url": ""
+  },
+  "anbieter": {
+    "name": "Sven Harzer",
+    "strasse": "Wriezener Straße 19",
+    "ort": "13055 Berlin",
+    "email": "info@karteideck.de",
+    "hoster": "Hetzner Online GmbH, Gunzenhausen"
+  },
+  "konto": {
+    "api": "api/index.php",
+    "test": true
   }
 }

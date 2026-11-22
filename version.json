@@ -1,17 +1,17 @@
 {
-  "version": "1.4.0",
-  "hinweis": "Handy-Navigation mit fünf Tabs, Sprachknopf oben, Demo im Fortschritt auch mit eigenen Daten, neue Seite „Was ist neu“. Komplett auf Englisch.",
+  "version": "1.7.0",
+  "hinweis": "Sicherer Abgleich, mehr Überblick im Fortschritt und schnelleres Laden.",
   "files": [
     {
       "pfad": "karteikarten.html",
-      "sha256": "b72876518074a6a54de838bafa12e1a5825b8b9697307e6e9902fbd57faa7eb3",
-      "groesse": 344383,
+      "sha256": "ef1118c53dee3fb7d748ef87b1a1bc711a592b5c9f9ad5043f208369537b72a6",
+      "groesse": 440941,
       "optional": false
     },
     {
       "pfad": "sw.js",
-      "sha256": "b7fd31ce23dc36521b65354aaee1761056f99bfd545ec4b9567faff880524321",
-      "groesse": 2229,
+      "sha256": "6e7535845260d728a6a9dab93175fb648aa906220fe21c256e9943e603c329a0",
+      "groesse": 2240,
       "optional": true
     },
     {

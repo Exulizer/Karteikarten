@@ -256,7 +256,7 @@ def translate_html(t):
 def build(root, vorlage, url, anbieter, konto_on, api, seiten, kontakt_html=None):
     """Schreibt en/*.html. seiten ist das Modul seiten.py (Rechtstexte, Konto-Prüfung)."""
     en = pathlib.Path(root) / 'en'; en.mkdir(exist_ok=True)
-    app = '../?lang=en' if url else '../karteikarten.html?lang=en'
+    app = '../?lang=en&app=1' if url else '../karteikarten.html?lang=en&app=1'
     kt = bool(konto_on and api); n = 0; allmiss = []
     def put(name, **kw):
         nonlocal n
@@ -274,7 +274,7 @@ def build(root, vorlage, url, anbieter, konto_on, api, seiten, kontakt_html=None
         if not d: return ''
         y, m, t = map(int, d.split('-')); return ' <small>%d %s %d</small>' % (t, MON[m - 1], y)
     L = json.loads((pathlib.Path(__file__).parent / 'neu.json').read_text(encoding='utf8'))
-    nb = '\n'.join('<h2>Version %s%s</h2>\n<ul>%s</ul>' % (v['v'], dat(v['datum']), ''.join('<li>%s</li>' % _esc(x) for x in v['en'])) for v in L)
+    nb = '\n'.join('<h2>Version %s%s%s</h2>\n<ul>%s</ul>' % (v['v'], '<span class="neu">New</span>' if i == 0 else '', dat(v['datum']), ''.join('<li>%s</li>' % _esc(x) for x in v['en'])) for i, v in enumerate(L))
     put('whats-new.html', title='What’s new – KarteiDeck', desc='What’s new in KarteiDeck: every version with the most important changes.', robots='index, follow, max-image-preview:large', h1='What’s new', body=nb, de_path='neu.html', extra_nav=False)
     for de, dlg, title, h1 in [('impressum', 'impDlg', 'Legal Notice – KarteiDeck', 'Legal notice'), ('datenschutz', 'dsDlg', 'Privacy – KarteiDeck', 'Privacy')]:
         body, fill = seiten._legal(vorlage, dlg, anbieter, konto_on, raw=True)
@@ -287,6 +287,8 @@ def build(root, vorlage, url, anbieter, konto_on, api, seiten, kontakt_html=None
     return n, sorted(set(allmiss))
 
 def kontakt(api, mail):
+    if api and not api.startswith(('http', '/', '../')):
+        api = '../' + api   # Seite liegt in en/, die API im Hauptordner
     nos = ('<noscript><p>The form needs JavaScript. You can also reach us by email: %s</p></noscript>' % _esc(mail)) if mail else '<noscript><p>The form needs JavaScript.</p></noscript>'
     return ('<p>Question, bug or idea? Write to us. The details go only to us and are used to reply.</p>\n'
       '<form id="kf" data-api="%s" data-lang="en" novalidate>\n'

@@ -63,6 +63,7 @@
     <button class="btn primary" id="bannerBtn" type="button">Erlauben</button>
   </div>
 
+  <main id="main">
   <!-- Lernen -->
   <section class="view active" id="view-study">
     <div id="filtSent" aria-hidden="true"></div>
@@ -237,6 +238,7 @@
       <div id="optHost"></div>
     </div>
   </section>
+  </main>
 </div>
 
 <footer class="foot">
@@ -299,7 +301,7 @@
     </section>
 
     <section class="lsec">
-      <h3 class="lh">So geht’s</h3>
+      <h2 class="lh">So geht’s</h2>
       <ol class="lsteps">
         <li class="lstep paper"><span class="lnum">1</span><h3>Karte schreiben</h3><p>Frage auf die Vorderseite, Lösung auf die Rückseite. Optional mit Bild.</p></li>
         <li class="lstep paper"><span class="lnum">2</span><h3>Aufdecken</h3><p>Karte umdrehen und ehrlich sagen: Gewusst oder Nochmal.</p></li>
@@ -308,7 +310,7 @@
     </section>
 
     <section class="lsec">
-      <h3 class="lh">Das steckt drin</h3>
+      <h2 class="lh">Das steckt drin</h2>
       <ul class="lfeats">
         <li class="feat"><svg class="fi" viewBox="0 0 576 512" aria-hidden="true" focusable="false"><path d="M48 195.8l209.2 86.1c9.8 4 20.2 6.1 30.8 6.1s21-2.1 30.8-6.1l242.4-99.8c9-3.7 14.8-12.4 14.8-22.1s-5.8-18.4-14.8-22.1L318.8 38.1C309 34.1 298.6 32 288 32s-21 2.1-30.8 6.1L14.8 137.9C5.8 141.6 0 150.3 0 160L0 456c0 13.3 10.7 24 24 24s24-10.7 24-24l0-260.2zm48 71.7L96 384c0 53 86 96 192 96s192-43 192-96l0-116.6-142.9 58.9c-15.6 6.4-32.2 9.7-49.1 9.7s-33.5-3.3-49.1-9.7L96 267.4z"/></svg><h3>Lernen</h3><p>Fächer mit Karten, Countdown, Tastatur. Rückwärts und gemischt mit Konto.</p></li>
         <li class="feat"><svg class="fi" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><path d="M36.4 353.2c4.1-14.6 11.8-27.9 22.6-38.7l181.2-181.2 33.9-33.9c16.6 16.6 51.3 51.3 104 104l33.9 33.9-33.9 33.9-181.2 181.2c-10.7 10.7-24.1 18.5-38.7 22.6L30.4 510.6c-8.3 2.3-17.3 0-23.4-6.2S-1.4 489.3 .9 481L36.4 353.2zm55.6-3.7c-4.4 4.7-7.6 10.4-9.3 16.6l-24.1 86.9 86.9-24.1c6.4-1.8 12.2-5.1 17-9.7L91.9 349.5zm354-146.1c-16.6-16.6-51.3-51.3-104-104L308 65.5C334.5 39 349.4 24.1 352.9 20.6 366.4 7 384.8-.6 404-.6S441.6 7 455.1 20.6l35.7 35.7C504.4 69.9 512 88.3 512 107.4s-7.6 37.6-21.2 51.1c-3.5 3.5-18.4 18.4-44.9 44.9z"/></svg><h3>Karten schreiben</h3><p>Mit Bild, Tags und Lückentext. Doppelte Fragen werden gemeldet.</p></li>
@@ -321,20 +323,20 @@
     </section>
 
     <section class="lsec lnote">
-      <h3 class="lh">Deine Daten</h3>
+      <h2 class="lh">Deine Daten</h2>
       <p>Ohne Konto bleiben die Karten im Browser auf deinem Gerät. Kein Tracking, ohne Konto keine Cookies, keine Fremdschriften. Updates holt die App bei GitHub, das lässt sich abschalten.</p>
       <p>Wichtig: Wer den Browserspeicher löscht, verliert die Karten. Sichere sie darum ab und zu mit „Karten speichern“.</p>
     </section>
 
     <section class="lsec lnote lkonto">
-      <h3 class="lh">Mit Konto <span class="lbadge">Geplant</span></h3>
+      <h2 class="lh">Mit Konto <span class="lbadge">Geplant</span></h2>
       <p>Wer sich registriert, hat seine Karten überall. Speichern, bearbeiten, löschen: alles bleibt im eigenen Konto.</p>
       <p>Auch alle Optionen gehören zum Konto und kommen auf jedem Gerät mit.</p>
       <p>Sicher: Passwörter liegen nie im Klartext, die Verbindung ist verschlüsselt, jeder sieht nur seine eigenen Daten.</p>
     </section>
 
     <section class="lsec">
-      <h3 class="lh">Fragen</h3>
+      <h2 class="lh">Fragen</h2>
       <dl class="lfaq">
         <dt>Kostet das etwas?</dt><dd>Nein.</dd>
         <dt>Geht das am Handy?</dt><dd>Ja. Notizzettel, Rechner und Player gibt es nur am großen Bildschirm.</dd>
@@ -373,12 +375,13 @@
     <label for="lgPw">Passwort</label>
     <input type="password" id="lgPw" autocomplete="current-password" placeholder="Dein Passwort" maxlength="200">
     <div class="row"><button class="btn primary" type="submit">Anmelden</button><button class="btn" type="button" data-go="register">Registrieren</button></div>
+    <div class="resend" id="lgResendRow" aria-hidden="true"><p>Diese Adresse ist noch nicht bestätigt.</p><div class="row"><button class="btn" type="button" id="lgResend" tabindex="-1">Bestätigungsmail erneut senden</button></div></div>
     <p class="acclinks"><button class="flink" type="button" data-go="forgot">Passwort vergessen</button></p>
   </form>
 
   <form data-v="register" novalidate>
     <label for="rgNick">Nickname</label>
-    <input type="text" id="rgNick" autocomplete="nickname" placeholder="3 bis 20 Zeichen, z. B. lernfuchs" maxlength="20" spellcheck="false" autocapitalize="off">
+    <input type="text" id="rgNick" autocomplete="nickname" placeholder="3 bis 20 Zeichen" maxlength="20" spellcheck="false" autocapitalize="off">
     <p class="nickst" id="rgNickSt" data-s="" aria-live="polite">Dein Name in der App. Er muss einmalig sein.</p>
     <label for="rgMail">E-Mail</label>
     <input type="email" id="rgMail" autocomplete="username" placeholder="name@beispiel.de" maxlength="190">
@@ -410,22 +413,23 @@
   <form data-v="nick" novalidate>
     <p class="acchint nickintro" id="nkIntro">Wähle einen Nickname. So heißt du in KarteiDeck.</p>
     <label for="nkNick">Nickname</label>
-    <input type="text" id="nkNick" autocomplete="nickname" placeholder="3 bis 20 Zeichen, z. B. lernfuchs" maxlength="20" spellcheck="false" autocapitalize="off">
+    <input type="text" id="nkNick" autocomplete="nickname" placeholder="3 bis 20 Zeichen" maxlength="20" spellcheck="false" autocapitalize="off">
     <p class="nickst" id="nkNickSt" data-s="" aria-live="polite">Buchstaben, Zahlen sowie . _ -</p>
     <div class="row"><button class="btn primary" type="submit">Speichern</button><button class="btn" type="button" id="nkLater">Später</button></div>
   </form>
 
   <div data-v="account">
+    <div class="accrow"><p class="accstamp">Angemeldet</p><span id="acAv" hidden></span></div>
     <p class="accmail" id="acMail"></p>
     <p class="accnick">Nickname: <b id="acNick"></b> <button class="flink" type="button" data-go="nick" id="acNickEdit">ändern</button></p>
+    <p class="acclvl" id="acLvl" hidden></p>
     <p class="accstate" id="acState"></p>
-    <div class="row"><button class="btn primary" type="button" id="acSync" title="Karten, Lernstand und Optionen mit dem Konto abgleichen">Jetzt abgleichen</button></div>
+    <div class="row accbtns"><button class="btn primary" type="button" id="acSync" title="Karten, Lernstand und Optionen mit dem Konto abgleichen">Jetzt abgleichen</button><button class="btn" type="button" data-go="chpw">Passwort ändern</button><button class="btn" type="button" data-go="versions" title="Älteren Stand deiner Karten zurückholen">Frühere Stände</button><button class="btn" type="button" id="acOut">Abmelden</button></div>
     <div class="accsec">
-      <div class="row"><button class="btn" type="button" id="acOut">Abmelden</button><button class="btn" type="button" data-go="chpw">Passwort ändern</button></div>
       <label class="accwipe"><input type="checkbox" id="acWipe"> Beim Abmelden Karten von diesem Gerät entfernen</label>
     </div>
     <div class="accsec accdanger">
-      <p class="acchint">Konto und Serverdaten löschen. Nicht rückgängig, danach folgt eine Passwort-Abfrage.</p>
+      <p class="acchint">Konto löschen geht nicht rückgängig.</p>
       <div class="row"><button class="btn danger" type="button" data-go="del">Konto löschen …</button></div>
     </div>
   </div>
@@ -446,9 +450,16 @@
     <div class="row"><button class="btn danger" type="submit">Endgültig löschen</button><button class="btn" type="button" data-go="account">Abbrechen</button></div>
   </form>
 
+  <div data-v="versions">
+    <p class="acchint" id="vrNote">Lade …</p>
+    <div class="vrlist" id="vrList"></div>
+    <div class="row"><button class="btn" type="button" data-go="account">Zurück</button></div>
+  </div>
+
   <div data-v="msg"><div class="row"><button class="btn primary" type="button" data-go="login">Zur Anmeldung</button></div></div>
   <div class="row accclose"><button class="btn" type="button" data-close>Schließen</button></div>
 </dialog>
+<div class="acctabs" id="accTabs" hidden><button type="button" data-go="login" aria-selected="true" aria-label="Anmelden"><span class="ti"><svg viewBox="0 0 512 512" aria-hidden="true"><path d="M345 273c9.4-9.4 9.4-24.6 0-33.9L201 95c-6.9-6.9-17.2-8.9-26.2-5.2S160 102.3 160 112v80H48c-26.5 0-48 21.5-48 48v32c0 26.5 21.5 48 48 48h112v80c0 9.7 5.8 18.5 14.8 22.2s19.3 1.7 26.2-5.2zm7 143c-17.7 0-32 14.3-32 32s14.3 32 32 32h64c53 0 96-43 96-96V128c0-53-43-96-96-96h-64c-17.7 0-32 14.3-32 32s14.3 32 32 32h64c17.7 0 32 14.3 32 32v256c0 17.7-14.3 32-32 32z"/></svg></span><span class="tt">Anmelden</span></button><button type="button" data-go="register" aria-selected="false" aria-label="Neu hier"><span class="ti"><svg viewBox="0 0 640 512" aria-hidden="true"><path d="M136 128a120 120 0 1 1 240 0 120 120 0 1 1-240 0M48 482.3C48 383.8 127.8 304 226.3 304h59.4c98.5 0 178.3 79.8 178.3 178.3 0 16.4-13.3 29.7-29.7 29.7H77.7C61.3 512 48 498.7 48 482.3M544 96c13.3 0 24 10.7 24 24v48h48c13.3 0 24 10.7 24 24s-10.7 24-24 24h-48v48c0 13.3-10.7 24-24 24s-24-10.7-24-24v-48h-48c-13.3 0-24-10.7-24-24s10.7-24 24-24h48v-48c0-13.3 10.7-24 24-24"/></svg></span><span class="tt">Neu hier</span></button></div>
 
 <dialog id="syncDlg" aria-labelledby="syTitle">
   <h2 id="syTitle">Welcher Stand gilt?</h2>

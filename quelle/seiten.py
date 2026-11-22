@@ -217,7 +217,7 @@ def _neu():
 
 def _neu_body():
     L, dat = _neu()
-    return '\n'.join('<h2>Version %s%s</h2>\n<ul>%s</ul>' % (v['v'], dat(v['datum']), ''.join('<li>%s</li>' % _esc(x) for x in v['de'])) for v in L)
+    return '\n'.join('<h2>Version %s%s%s</h2>\n<ul>%s</ul>' % (v['v'], '<span class="neu">Neu</span>' if i == 0 else '', dat(v['datum']), ''.join('<li>%s</li>' % _esc(x) for x in v['de'])) for i, v in enumerate(L))
 
 def _page(slug, title, desc, robots, url, h1, body, extra_nav=True, faq=None):
     more = ''
@@ -226,12 +226,13 @@ def _page(slug, title, desc, robots, url, h1, body, extra_nav=True, faq=None):
         links = ''.join('<li><a href="%s.html">%s</a></li>' % (p['slug'], _esc(p['nav'])) for p in PAGES if p['slug'] != slug)
         more = '<nav class="more" aria-label="Weitere Themen"><h2>Mehr zum Thema</h2><ul>%s</ul></nav>' % links
     app = './' if url else APP   # online zeigt die Adresse nur die Domain, nicht karteikarten.html
-    cta = '<p class="cta"><a class="btn primary" href="%s">KarteiDeck öffnen</a></p>' % app if extra_nav else ''
+    app_go = app + ('?app=1' if app.endswith('/') else '?app=1')   # direkt zum Lernen, ohne Startseite
+    cta = '<p class="cta"><a class="btn primary" href="%s">KarteiDeck öffnen</a></p>' % app_go if extra_nav else ''
     return ('<!DOCTYPE html>\n<html lang="de">\n<head>\n' + _head(title, desc, robots, url, slug) + '\n</head>\n<body>\n'
       '<div class="sheet">\n<header><a class="brand" href="%s"><img src="logo.svg" width="40" height="40" alt=""><b>%s</b></a><span class="hr">%s<a class="btn" href="%s">Zur App</a></span></header>\n'
       '<main>\n<h1>%s</h1>\n%s\n%s\n</main>\n%s\n'
       '<footer><a href="%s">Startseite</a><a href="impressum.html">Impressum</a>%s<a href="datenschutz.html">Datenschutz</a><a href="neu.html">Was ist neu</a></footer>\n</div>\n%s</body>\n</html>\n'
-      ) % (app, NAME, '<a class="btn" href="en/%s.html" hreflang="en" lang="en">English</a>' % _en(slug) if _en(slug) else '', app, _esc(h1), body.strip(), cta, more, app, '<a href="kontakt.html">Kontakt</a>' if _KT else '', '<script src="kontakt.js"></script>\n' if slug == 'kontakt' else '')
+      ) % (app, NAME, '<a class="btn" href="en/%s.html" hreflang="en" lang="en">English</a>' % _en(slug) if _en(slug) else '', app_go, _esc(h1), body.strip(), cta, more, app, '<a href="kontakt.html">Kontakt</a>' if _KT else '', '<script src="kontakt.js"></script>\n' if slug == 'kontakt' else '')
 
 def _legal(vorlage, dlg, anb, konto_on, raw=False):   # raw: Platzhalter nicht füllen (die englische Fassung übersetzt zuerst)
     m = re.search(r'<dialog id="%s".*?</dialog>' % dlg, vorlage, re.S)

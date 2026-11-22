@@ -8,6 +8,9 @@
     LANG = lq ? lq[1] : (localStorage.getItem('kartenbox-lang') === 'en' ? 'en' : 'de');
     if (lq) { localStorage.setItem('kartenbox-lang', LANG); history.replaceState(null, '', location.pathname + location.search.replace(/([?&])lang=(de|en)&?/, '$1').replace(/[?&]$/, '') + location.hash); }
   } catch (e) { if (lq) LANG = lq[1]; }
+  /* Online-Build: Das Englisch-Wörterbuch liegt in einer eigenen Datei und wird nur für Englisch nachgeladen (deutsche Besucher sparen etwa 24 KB). Offline-Build: eingebettet. */
+  var EN_SRC = null /*EN_SRC*/;
+  function go() {
   try { if (sessionStorage.getItem('kartenbox-fade')) { sessionStorage.removeItem('kartenbox-fade'); document.documentElement.classList.add('lin'); setTimeout(function () { document.documentElement.classList.remove('lin'); }, 400); } } catch (e) {}
   var trs = function (t) { return t; };   // Text im Code übersetzen (für Texte, die nicht im DOM stehen)
   if (LANG === 'en' && EN_DICT) {
@@ -72,6 +75,12 @@
   }
   var fh = document.getElementById('ftHilfe'); if (fh && LANG === 'en') fh.setAttribute('href', 'en/help.html');
   var fn = document.getElementById('ftNeu'); if (fn && LANG === 'en') fn.setAttribute('href', 'en/whats-new.html');
+  if (fn) {
+    var NEUV = '/*NEUV*/', seen = null;
+    try { seen = localStorage.getItem('kb-neu-gesehen'); } catch (e) {}
+    if (seen !== NEUV) fn.setAttribute('data-neu', LANG === 'en' ? 'New' : 'Neu');
+    fn.addEventListener('click', function () { try { localStorage.setItem('kb-neu-gesehen', NEUV); } catch (e) {} fn.setAttribute('data-neu', ''); });
+  }
   ['hdLang', 'landLang', 'landLang2'].forEach(function (id) {
     var b = document.getElementById(id); if (!b) return;
     b.textContent = LANG === 'en' ? 'Deutsch' : 'English'; b.lang = LANG === 'en' ? 'de' : 'en';
@@ -258,6 +267,12 @@
   }
   var FILECFG = normalize(merge(DEFAULTS, window.KARTENBOX_EINSTELLUNGEN));
   var CFG = clone(FILECFG);
+  try {
+    /* Rettung: Eine frühere Fassung hat Einstellungen versehentlich unter dem Schlüssel des Abgleich-Stands gespeichert (doppelter Variablenname).
+       Liegt dort ein Einstellungs-Objekt (kein Abgleich-Stand), ist es der neuere Stand: übernehmen und den Abgleich-Schlüssel freigeben. */
+    var wrong = localStorage.getItem('kartenbox-abgleich');
+    if (wrong) { var wo = JSON.parse(wrong); if (wo && !wo.base && !('u' in wo) && wo.schrift && wo.karte) { localStorage.setItem(SKEY, wrong); localStorage.removeItem('kartenbox-abgleich'); } }
+  } catch (e) {}
   try {
     var rawCfg = localStorage.getItem(SKEY);
     if (rawCfg) CFG = normalize(merge(FILECFG, JSON.parse(rawCfg)));
@@ -725,16 +740,22 @@
     var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab')), t = document.querySelector('.tab[aria-selected="true"]'), i = $('tabInd');
     if (!t || !i) return;
     var idx = tabs.indexOf(t), a = tabs[prevTab];
-    function rest() { i.style.width = t.offsetWidth + 'px'; i.style.transform = 'translateX(' + t.offsetLeft + 'px)'; i.classList.remove('moving'); }
+    function rest(q) {   // q: nur nachführen (Start, Größenänderung, Schrift geladen), ohne Gleiten
+      var w = t.offsetWidth, l = t.offsetLeft;
+      if (q) i.style.transition = 'none';
+      i.style.width = w + 'px'; i.style.transform = 'translateX(' + l + 'px)'; i.classList.remove('moving');
+      if (q) requestAnimationFrame(function () { requestAnimationFrame(function () { i.style.transition = ''; }); });
+    }   // erst lesen, dann schreiben (kein erzwungenes Layout)
     clearTimeout(indT);
     if (anim === true && a && prevTab !== idx && CFG.animation.an) {
       // ein Zug: Streifen, Linie und Stift gleiten gemeinsam zum neuen Tab
+      var w2 = t.offsetWidth, l2 = t.offsetLeft;
       i.classList.add('moving');
-      i.style.width = t.offsetWidth + 'px'; i.style.transform = 'translateX(' + t.offsetLeft + 'px)';
+      i.style.width = w2 + 'px'; i.style.transform = 'translateX(' + l2 + 'px)';
       indT = setTimeout(function () { i.classList.remove('moving'); }, 520 / CFG.animation.tempo);
-    } else rest();
+    } else rest(anim !== true);
     prevTab = idx;
-    if (PHONE.matches) setTimeout(rest, 400);   // der aktive Tab klappt auf: danach Marke an die endgültige Breite setzen
+    if (PHONE.matches) setTimeout(function () { rest(anim !== true); }, 400);   // der aktive Tab klappt auf: danach Marke an die endgültige Breite setzen
   }
   /* Mouseover: das helle Kästchen wandert mit der Maus mit (weich nachgezogen) */
   (function () {
@@ -1111,11 +1132,20 @@
     var d = t ? new Date(t) : new Date();
     return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
   }
+  /* Serie: Tage in Folge mit Lernen. Ein freier Tag unterbricht sie nicht, aber höchstens einer je 7 Tage (der freie Tag selbst zählt nicht mit). */
   function streak(lg) {
     lg = lg || db.log;
-    var d = new Date(), n = 0;
+    var d = new Date(), n = 0, since = 7;
     if (!lg[dayKey(d)]) d.setDate(d.getDate() - 1);   // heute noch nicht gelernt: Serie zählt ab gestern
-    while (lg[dayKey(d)]) { n++; d.setDate(d.getDate() - 1); }
+    for (var g = 0; g < 4000; g++) {
+      if (lg[dayKey(d)]) { n++; since++; }
+      else {
+        var p = new Date(d); p.setDate(p.getDate() - 1);
+        if (since >= 7 && lg[dayKey(p)]) since = 0;   // ein freier Tag, davor wurde gelernt
+        else break;
+      }
+      d.setDate(d.getDate() - 1);
+    }
     return n;
   }
   /* Kleine Zeilen der Rechner-Anzeige: Fach der offenen Karte, richtig/nochmal in dieser Runde, Tagesziel */
@@ -1224,6 +1254,7 @@
     d('hasCloze', function () { return hasCloze; }, function (v) { hasCloze = v; });
     d('next', function () { return next; }, function (v) { next = v; });
     d('norm', function () { return norm; }, function (v) { norm = v; });
+    d('openEdit', function () { return openEdit; }, function (v) { openEdit = v; });
     d('LANG', function () { return LANG; });
     d('LOC', function () { return LOC; });
     d('tr', function () { return trs; });
@@ -1543,6 +1574,7 @@
       L.n++; if (ok) L.ok++;
       (L.c || (L.c = [])).push([id, ok ? 1 : 0]); if (L.c.length > 400) L.c.shift();
       persist(); scheduleWrite();
+      if (PRO.profile) try { PRO.profile(); } catch (e) {}
     }
     S.round[ok ? 'ok' : 'bad']++;
     if (S.exam) S.exam[ok ? 'ok' : 'bad']++;
@@ -2523,8 +2555,10 @@
     var r, j;
     if (K.mock) { j = await mockApi(a, body === undefined ? undefined : (typeof body === 'string' ? JSON.parse(body) : body)); r = { status: j.status }; }
     else try { r = await fetch(kurl(a), opt); j = await r.json(); } catch (e) { return { ok: false, status: 0, err: 'Keine Verbindung zum Server.' }; }
+    var ra = !K.mock && r.headers && +r.headers.get('Retry-After');
     if (!j || typeof j !== 'object') return { ok: false, status: r.status, err: 'Unerwartete Antwort.' };
     j.status = r.status;
+    if (ra > 0) j.retry = Math.min(ra, 3600);   // Der Server bittet um Pause (zu viele Anfragen): kRetry hält sich daran
     if (r.status === 404 && j.err === 'unbekannt') j.err = 'Das gibt es auf dem Server noch nicht. Die Serverdateien (api/) des Updates fehlen.';
     if (j.err === 'csrf' && !retried) { await kProbe(); return kapi(a, body, true); }
     if (j.csrf) K.csrf = j.csrf;
@@ -2545,8 +2579,9 @@
     function ok(o) { return Object.assign({ ok: true, status: 200 }, o); }
     function no(st, m, x) { return Object.assign({ ok: false, status: st, err: m }, x || {}); }
     var me = d.sess && d.users[d.sess] ? d.sess : '';
-    var needs = ['data', 'save', 'password', 'delete'];
+    var needs = ['data', 'rev', 'save', 'versions', 'restore', 'password', 'delete'];
     if (needs.indexOf(a) >= 0 && !me) return no(401, 'Bitte melde dich an.', { code: 'auth' });
+    if (d.fail && needs.indexOf(a) >= 0) return no(0, 'Keine Verbindung zum Server.');   // Testschalter: Netz weg
     var nk = function (e) { return d.users[e] && d.users[e].nick || ''; };
     var nickBad = function (n) { return n.length < 3 ? 'Der Nickname braucht mindestens 3 Zeichen.' : n.length > 20 ? 'Der Nickname darf höchstens 20 Zeichen haben.' : !/^[\p{L}\p{N}][\p{L}\p{N}._-]*$/u.test(n) ? 'Erlaubt sind Buchstaben, Zahlen sowie . _ - (nicht am Anfang).' : ''; };
     var nickTaken = function (n, except) { return Object.keys(d.users).some(function (e) { return e !== except && nk(e).toLowerCase() === n.toLowerCase(); }); };
@@ -2567,6 +2602,7 @@
     }
     if (a === 'logout') { d.sess = ''; put(); return ok({ csrf: 'test' }); }
     if (a === 'verify') return ok({ msg: 'Testmodus: nichts zu bestätigen.' });
+    if (a === 'resend-verify') return ok({ msg: 'Testmodus: Es wird keine Mail gesendet.' });
     if (a === 'reset-request') return ok({ msg: 'Testmodus: Es wird keine Mail gesendet. Melde dich an und nutze „Passwort ändern".' });
     if (a === 'reset') return no(400, 'Im Testmodus gibt es keinen Link.');
     if (a === 'contact') {
@@ -2582,11 +2618,20 @@
       if (d.users[me].pw !== await sha(b.password || '')) return no(401, 'Das Passwort stimmt nicht.');
       delete d.users[me]; delete d.data[me]; d.sess = ''; put(); return ok({ csrf: 'test', msg: 'Dein Konto und alle Daten dazu sind gelöscht.' });
     }
+    if (a === 'rev') { var xr = d.data[me]; return ok({ rev: xr ? xr.rev : 0 }); }
     if (a === 'data') { var x = d.data[me]; return ok({ rev: x ? x.rev : 0, updated: 0, data: x ? JSON.parse(x.body) : null }); }
     if (a === 'save') {
       var cur = d.data[me] ? d.data[me].rev : 0;
       if ((b.rev | 0) !== cur) return no(409, 'conflict', { rev: cur });
+      if (d.data[me]) { d.vers = d.vers || {}; (d.vers[me] = d.vers[me] || []).unshift({ id: (d.vn = (d.vn || 0) + 1), ts: Math.floor(Date.now() / 1000), body: d.data[me].body }); d.vers[me].length = Math.min(d.vers[me].length, 4); }   // Testkonto: jede Änderung sichert den alten Stand (vereinfacht)
       d.data[me] = { rev: cur + 1, body: JSON.stringify(b.data) }; put(); return ok({ rev: cur + 1 });
+    }
+    if (a === 'versions') return ok({ versions: ((d.vers || {})[me] || []).map(function (v) { var o = JSON.parse(v.body); return { id: v.id, ts: v.ts, cards: (o.cards || []).length, size: v.body.length }; }) });
+    if (a === 'restore') {
+      var vv = ((d.vers || {})[me] || []).filter(function (v) { return v.id === (b.id | 0); })[0];
+      if (!vv) return no(404, 'Diesen Stand gibt es nicht mehr.');
+      d.vers[me].unshift({ id: (d.vn = (d.vn || 0) + 1), ts: Math.floor(Date.now() / 1000), body: d.data[me].body });
+      d.data[me] = { rev: d.data[me].rev + 1, body: vv.body }; put(); return ok({ rev: d.data[me].rev, data: JSON.parse(vv.body) });
     }
     return no(404, 'unbekannt');
   }
@@ -2621,14 +2666,40 @@
     if ($('accDlg').open && K.user) { $('acState').textContent = K.paused ? 'Abgleich pausiert. Tippe auf „Jetzt abgleichen“.' : K.state; }
   }
   /* Dialog-Ansichten */
-  var ACC_TITLE = { login: 'Anmelden', register: 'Konto anlegen', forgot: 'Passwort vergessen', newpw: 'Neues Passwort', account: 'Konto', chpw: 'Passwort ändern', del: 'Konto löschen', msg: 'Konto', nick: 'Nickname' };
+  var ACC_TITLE = { login: 'Anmelden', register: 'Konto anlegen', forgot: 'Passwort vergessen', newpw: 'Neues Passwort', account: 'Konto', chpw: 'Passwort ändern', del: 'Konto löschen', msg: 'Konto', nick: 'Nickname', versions: 'Frühere Stände' };
+  /* Notizzettel (Anmelden / Neu hier) liegen außerhalb des Fensters und werden an dessen rechten Rand gesetzt */
+  /* Konto-Fenster ohne Scrollbalken: Zeilenhöhe so lange verkleinern, bis alles passt (nicht unter 28 px) */
+  function accFit() {
+    var d = $('accDlg'); if (!d.open) return;
+    d.style.removeProperty('--ln'); return;   // Verkleinern abgeschaltet: lieber großzügig und bei sehr kleinen Fenstern scrollen
+    var base = parseFloat(getComputedStyle(d).getPropertyValue('--ln')) || 34;
+    for (var l = base; l >= (innerHeight <= 640 ? 24 : 28) && d.scrollHeight > d.clientHeight + 1; l -= 1) d.style.setProperty('--ln', l + 'px');
+  }
+  window.addEventListener('resize', function () { accFit(); });
+  function accNotes() {
+    var d = $('accDlg'), t = $('accTabs'), v = d.dataset.view;
+    if (!d.open || (v !== 'login' && v !== 'register')) { t.hidden = true; return; }
+    t.hidden = false;
+    var r = d.getBoundingClientRect(), ln = parseFloat(getComputedStyle(d).getPropertyValue('--ln')) || 30;
+    t.style.setProperty('--x', Math.round(r.right) + 'px'); t.style.setProperty('--y', Math.round(r.top + ln * 3) + 'px');
+  }
+  window.addEventListener('resize', accNotes);
+  if (window.ResizeObserver) new ResizeObserver(accNotes).observe($('accDlg'));
+  $('accDlg').addEventListener('close', function () { $('accTabs').hidden = true; });
+  $('accDlg').addEventListener('animationend', accNotes); $('accDlg').addEventListener('transitionend', accNotes);
+  $('accTabs').addEventListener('click', function (e) { var g = e.target.closest('[data-go]'); if (g) accView(g.dataset.go); });
   function accView(v, msg, err) {
     document.querySelectorAll('#accDlg [data-v]').forEach(function (n) { n.hidden = n.dataset.v !== v; });
     $('accErr').textContent = err || '';
     $('accMsg').textContent = msg || '';
     $('accTitle').textContent = ACC_TITLE[v];
-    if (v === 'account') { $('acMail').textContent = K.user ? K.user.email : ''; $('acNick').textContent = K.user && K.user.nick ? K.user.nick : 'noch keiner'; $('acNickEdit').textContent = K.user && K.user.nick ? 'ändern' : 'festlegen'; kUI(); }
+    $('accDlg').dataset.view = v;
+    $('accTabs').querySelectorAll('button').forEach(function (t) { t.setAttribute('aria-selected', String(t.dataset.go === v)); });
+    if (v === 'account' && PRO.profile) try { PRO.profile(true); } catch (e) {}
+    if (v === 'account') { $('acState').textContent = K.paused ? 'Abgleich pausiert. Tippe auf „Jetzt abgleichen“.' : K.state; $('acMail').textContent = K.user ? K.user.email : ''; $('acNick').textContent = K.user && K.user.nick ? K.user.nick : 'noch keiner'; $('acNickEdit').textContent = K.user && K.user.nick ? 'ändern' : 'festlegen'; kUI(); }
+    if (v === 'versions') kVers();
     if (v === 'nick') { $('nkIntro').textContent = K.user && K.user.nick ? 'Dein Nickname kann sich später ändern, er bleibt einmalig.' : 'Wähle einen Nickname. So heißt du in KarteiDeck.'; $('nkNick').value = K.user && K.user.nick ? K.user.nick : ''; nickLive($('nkNick'), $('nkNickSt'), true); $('nkLater').hidden = !!(K.user && K.user.nick); }
+    accFit(); accNotes(); setTimeout(function () { accFit(); accNotes(); }, 150); setTimeout(function () { accFit(); accNotes(); }, 600);
     var f = document.querySelector('#accDlg [data-v="' + v + '"] input:not(.hp)');
     if (f) setTimeout(function () { f.focus(); }, 30);
   }
@@ -2732,9 +2803,24 @@
     var mail = $('lgMail').value.trim(), pw = $('lgPw').value;
     if (!mail || !pw) return accFail({}, 'Bitte E-Mail und Passwort eingeben.');
     var j = await kapi('login', { email: mail, password: pw });
+    resendRow(!j.ok && j.code === 'unverified');
     if (!j.ok) return accFail(j, 'Anmeldung fehlgeschlagen.');
     $('lgPw').value = ''; K.user = j.user; K.paused = false; K.rev = 0; K.state = '';
     accView('account', 'Angemeldet.'); kUI(); kPull();
+  });
+  /* Bestätigungsmail erneut senden: Der Knopf erscheint nur, wenn die Anmeldung wegen fehlender Bestätigung scheiterte. */
+  function resendRow(on) {
+    var r = $('lgResendRow'); r.classList.toggle('on', !!on); r.setAttribute('aria-hidden', String(!on)); $('lgResend').tabIndex = on ? 0 : -1;
+  }
+  $('lgMail').addEventListener('input', function () { resendRow(false); });
+  $('lgResend').addEventListener('click', async function () {
+    var b = $('lgResend'), mail = $('lgMail').value.trim();
+    if (!mail || b.disabled) return;
+    b.disabled = true;
+    var j = await kapi('resend-verify', { email: mail });
+    setTimeout(function () { b.disabled = false; }, 30000);   // nicht mehrfach hintereinander
+    if (!j.ok) { b.disabled = false; return accFail(j, 'Das hat nicht geklappt.'); }
+    resendRow(false); accView('msg', j.msg);
   });
   accForm('register', async function () {
     var mail = $('rgMail').value.trim(), pw = $('rgPw').value, nick = $('rgNick').value.trim();
@@ -2790,7 +2876,7 @@
     $('acWipe').checked = false;
     kUI(); accView('login', note);
   });
-  $('acSync').addEventListener('click', async function () { K.paused = false; K.state = 'Gleiche ab …'; kUI(); await kPull(); });
+  $('acSync').addEventListener('click', async function () { K.paused = false; K.shrinkAsk = null; K.manual = true; setTimeout(function () { K.manual = false; }, 20000); K.state = 'Gleiche ab …'; kUI(); await kPull(); });
   $('accDlg').addEventListener('click', function (e) {
     var g = e.target.closest('[data-go]');
     if (g) { accView(g.dataset.go); return; }
@@ -2806,23 +2892,217 @@
   function norm(o) { return JSON.stringify(parseData({ cards: o.cards, cats: o.cats, log: o.log, colors: o.colors })); }
   function scheduleSync() {
     if (!K || !K.user || K.paused || K.pulling) return;
+    if (K.fails && K.timer) return;   // nach einem Fehler gilt der Wiederholungs-Abstand, Änderungen warten darauf
     clearTimeout(K.timer);
     K.state = 'Änderungen warten'; kUI();
-    K.timer = setTimeout(function () { K.timer = null; kPush(); }, 2000);
+    /* Erst senden, wenn 20 Sekunden Ruhe ist, spätestens 2 Minuten nach der ersten Änderung: wenige, größere Schreibvorgänge statt einem pro Karte */
+    /* Große Konten schreiben seltener (je größer der Stand, desto länger die Ruhe und die Höchstwartezeit): 20 s und 2 min bei kleinen Ständen, bis 90 s und 10 min bei sehr großen. Das schont die Datenbank. */
+    if (K.len === undefined) { try { K.len = JSON.stringify(snapshot()).length; } catch (e) { K.len = 0; } }
+    var quiet = 20000 + Math.min(70000, K.len * 0.1), maxw = 120000 + Math.min(480000, K.len * 0.2);
+    var now = Date.now(); if (!K.since) K.since = now;
+    K.timer = setTimeout(function () { K.timer = null; kPush(); }, Math.max(1000, Math.min(quiet, K.since + maxw - now)));
+  }
+  /* Zusammenführen statt Fragen: Pro Karte, Tag und Option wird mit dem letzten gemeinsamen Stand verglichen.
+     Gespeichert wird nur eine kurze Prüfsumme je Karte, keine Kopie der Daten. */
+  var AKEY = 'kartenbox-abgleich';
+  function hsh(o) { var t = JSON.stringify(o), h = 5381, i; for (i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return h + ':' + t.length; }
+  function cContent(c) { return hsh([c.q, c.a, c.cat, c.tags || null, c.img || null, !!c.pin]); }
+  function cState(c) { return hsh([c.n || 0, c.box || 0, c.due || 0, c.last || '', c.miss || 0, c.mst || 0, c.snz || 0]); }
+  function mkBase(d) {
+    var b = { cards: {}, cats: d.cats.slice(), log: {}, colors: clone(d.colors || {}), cfg: {} };
+    d.cards.forEach(function (c) { b.cards[c.id] = [cContent(c), cState(c)]; });
+    Object.keys(d.log).forEach(function (k) { b.log[k] = [d.log[k].n, d.log[k].ok, (d.log[k].c || []).length]; });
+    Object.keys(d.cfg || {}).forEach(function (k) { b.cfg[k] = hsh(d.cfg[k]); });
+    return b;
+  }
+  function kBaseOf(snap) { var d = parseData({ cards: snap.cards, cats: snap.cats, log: snap.log, colors: snap.colors }); d.cfg = snap.cfg || {}; return mkBase(d); }
+  function kStore() { try { localStorage.setItem(AKEY, JSON.stringify({ u: K.user && K.user.email, rev: K.rev, base: K.base, pend: K.pend || null })); } catch (e) {} }
+  function kSave(base) { K.base = base; K.pend = null; K.fails = 0; kStore(); }
+  /* Vor dem Senden merken, was gesendet wird. Kommt die Antwort nicht an (Netz weg, Seite zu), erkennt der nächste Abgleich, dass der Server das schon hat. */
+  function kPend(snap) { K.pend = kBaseOf(snap); kStore(); }
+  function kLoadBase() {
+    try { var o = JSON.parse(localStorage.getItem(AKEY)); if (o && K.user && o.u === K.user.email && o.base) { K.base = o.base; K.pend = o.pend || null; return o.rev | 0; } } catch (e) {}
+    K.base = null; K.pend = null; return 0;
+  }
+  function kMerge(L, S, B) {
+    var out = { cards: [], cats: [], log: {}, colors: {}, cfg: {} }, lost = 0, id;
+    var lm = {}, sm = {}, bc = B ? B.cards : {};
+    L.cards.forEach(function (c) { lm[c.id] = c; }); S.cards.forEach(function (c) { sm[c.id] = c; });
+    var ids = Object.keys(lm).concat(Object.keys(sm).filter(function (k) { return !lm[k]; }));
+    ids.forEach(function (id) {
+      var l = lm[id], s = sm[id], b = bc[id];
+      if (l && !s) {   // nur lokal: neu, oder auf dem Konto gelöscht
+        if (b && b[0] === cContent(l) && b[1] === cState(l)) return;   // lokal unverändert, anderswo gelöscht: löschen
+        out.cards.push(l); return;
+      }
+      if (s && !l) {   // nur auf dem Konto: neu, oder hier gelöscht
+        if (b && b[0] === cContent(s) && b[1] === cState(s)) return;
+        out.cards.push(s); return;
+      }
+      var lc = cContent(l), sc = cContent(s), ls = cState(l), ss = cState(s), r = clone(l);
+      if (lc !== sc) {
+        var lcCh = !b || b[0] !== lc, scCh = !b || b[0] !== sc;
+        if (scCh && !lcCh) { r.q = s.q; r.a = s.a; r.cat = s.cat; r.tags = s.tags; r.img = s.img; r.pin = s.pin; if (!s.tags) delete r.tags; if (!s.img) delete r.img; if (!s.pin) delete r.pin; }
+        else if (scCh && lcCh) { var cp = clone(s); cp.id = uid(); out.cards.push(cp); lost++; }   // beide Seiten bearbeitet: beide Fassungen bleiben
+      }
+      if (ls !== ss) {
+        var lsCh = !b || b[1] !== ls, ssCh = !b || b[1] !== ss;
+        if ((ssCh && !lsCh) || (ssCh && lsCh && (s.n || 0) > (l.n || 0))) ['n', 'box', 'due', 'last', 'miss', 'mst', 'snz'].forEach(function (f) { if (s[f] === undefined) delete r[f]; else r[f] = s[f]; });
+      }
+      out.cards.push(r);
+    });
+    var gone = {}; if (B) B.cats.forEach(function (c) { if (L.cats.indexOf(c) < 0 || S.cats.indexOf(c) < 0) gone[c] = 1; });
+    L.cats.concat(S.cats).forEach(function (c) { if (out.cats.indexOf(c) < 0) out.cats.push(c); });
+    out.cards.forEach(function (c) { if (out.cats.indexOf(c.cat) < 0) out.cats.push(c.cat); });
+    out.cats = out.cats.filter(function (c) { return !gone[c] || out.cards.some(function (x) { return x.cat === c; }); });
+    if (!out.cats.length) out.cats.push(DEF);
+    out.cats.forEach(function (c) { var v = (L.colors || {})[c] || (S.colors || {})[c]; if (v) out.colors[c] = v; });
+    var days = Object.keys(L.log).concat(Object.keys(S.log).filter(function (k) { return !L.log[k]; }));
+    days.forEach(function (k) {
+      var l = L.log[k], s = S.log[k], b = B && B.log[k];
+      if (!l || !s) { out.log[k] = clone(l || s); return; }
+      if (l.n === s.n && l.ok === s.ok) { out.log[k] = clone(l); return; }   // gleicher Stand: nichts addieren
+      var n, ok, c;
+      if (B) {   // beide haben seit dem letzten Abgleich geübt: die Zuwächse addieren
+        var bn = b ? b[0] : 0, bo = b ? b[1] : 0, bl = b ? b[2] : 0;
+        n = bn + (l.n - bn) + (s.n - bn); ok = bo + (l.ok - bo) + (s.ok - bo);
+        c = (s.c || []).concat((l.c || []).slice(bl));
+      } else { n = Math.max(l.n, s.n); ok = Math.max(l.ok, s.ok); c = (l.c || []).length >= (s.c || []).length ? l.c : s.c; }
+      out.log[k] = { n: Math.max(1, n), ok: Math.max(0, Math.min(ok, n)) };
+      if (c && c.length) out.log[k].c = c.slice(-400);
+    });
+    var bf = B ? B.cfg : {}, keys = Object.keys(L.cfg || {}).concat(Object.keys(S.cfg || {}));
+    keys.forEach(function (k) {
+      if (out.cfg[k] !== undefined) return;
+      var l = (L.cfg || {})[k], s = (S.cfg || {})[k];
+      out.cfg[k] = (s !== undefined && bf[k] !== undefined && hsh(l) === bf[k]) ? s : (l !== undefined ? l : s);
+    });
+    out.lost = lost;
+    return out;
+  }
+  /* Holt den Kontostand, führt zusammen und sendet das Ergebnis. Bis zu drei Anläufe, falls zwischendurch ein anderes Gerät speichert. */
+  async function kSync(tries) {
+    tries = tries || 0;
+    if (!K.user || K.pulling) return;
+    if (K.busy) { K.again = true; return; }
+    if (K.base === undefined) kLoadBase();
+    K.busy = true;
+    /* Schnellweg: Ist die Revision auf dem Server unverändert und lokal nichts offen, braucht es den ganzen Stand nicht (spart dem Server das Lesen und Entschlüsseln der kompletten Daten bei jedem Seitenstart). */
+    if (K.base && !K.pend && K.rev > 0 && !tries) {
+      var q = await kapi('rev');
+      if (q.ok && q.rev === K.rev) {
+        try { if (JSON.stringify(kBaseOf(snapshot())) === JSON.stringify(K.base)) { K.fails = 0; K.state = kOkText(); K.busy = false; kUI(); if (K.again) { K.again = false; scheduleSync(); } return; } } catch (e) {}
+      }
+    }
+    var j = await kapi('data'), done = false, took = false;
+    try {
+      if (!j.ok) { kRetry(kSync, j); return; }
+      var d = j.data;
+      if (!d) { K.rev = 0; K.busy = false; if (hasLocal()) await kPush(); else { K.state = 'Das Konto ist noch leer.'; kUI(); } return; }
+      var mine = snapshot(), sd = parseData({ cards: d.cards, cats: d.cats, log: d.log, colors: d.colors });
+      sd.cfg = d.cfg || {};
+      if (K.pend && JSON.stringify(mkBase(sd)) === JSON.stringify(K.pend)) { K.base = K.pend; K.pend = null; K.rev = j.rev; kStore(); }   // der Server hat unseren letzten Stand schon
+      if (!hasLocal()) { K.rev = j.rev; kTake(d); kSave(kBaseOf(snapshot())); return; }
+      var ld = parseData({ cards: mine.cards, cats: mine.cats, log: mine.log, colors: mine.colors }); ld.cfg = mine.cfg;
+      var m = kMerge(ld, sd, K.base);
+      var same = norm(m) === norm(mine), cfgSame = JSON.stringify(m.cfg) === JSON.stringify(mine.cfg);
+      if (!same || !cfgSame) {
+        K.pulling = true;
+        try { takeData(parseData({ cards: m.cards, cats: m.cats, log: m.log, colors: m.colors })); } finally { K.pulling = false; }
+        if (!cfgSame) { var keep = {}; NOSYNC.forEach(function (k) { keep[k] = CFG[k]; }); CFG = normalize(merge(FILECFG, m.cfg)); NOSYNC.forEach(function (k) { CFG[k] = keep[k]; }); saveCfg(); applyCfg(); }
+        REF.forEach(function (f) { f(); }); studyDirty = true; show(current); took = true;
+      }
+      var merged = snapshot();
+      if (norm(merged) === norm(sd) && JSON.stringify(merged.cfg) === JSON.stringify(sd.cfg)) { K.rev = j.rev; K.sentHash = hsh(merged); kSave(kBaseOf(merged)); K.state = kOkText(); if (took) toast('Neuer Stand vom Konto geladen'); done = true; return; }
+      K.busy = false; if (kShrinkStop(merged, false)) return; K.busy = true;
+      var body = JSON.stringify({ rev: j.rev, data: merged });
+      if (body.length > 7500000) { kTooBig(); return; }
+      kPend(merged);
+      var r = await kapi('save', body);
+      if (r.ok) { K.rev = r.rev; K.sentHash = hsh(merged); kSave(kBaseOf(merged)); K.state = kOkText(); done = true; if (took) toast('Karten von beiden Geräten zusammengeführt'); if (m.lost) toast('Eine Karte wurde auf zwei Geräten geändert. Beide Fassungen sind da.'); return; }
+      if (r.status === 409 && tries < 3) { K.busy = false; return await kSync(tries + 1); }
+      kRetry(kSync, r);
+    } finally { K.busy = false; kUI(); if (K.again) { K.again = false; scheduleSync(); } }
+  }
+  /* Frühere Stände: Liste vom Server, Zurückholen mit eigener Rückfrage. Der jetzige Stand wird vom Server vorher gesichert. */
+  function vrDate(ts) { try { return new Date(ts * 1000).toLocaleString(document.documentElement.lang === 'en' ? 'en-GB' : 'de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (e) { return String(ts); } }
+  async function kVers() {
+    var host = $('vrList'), note = $('vrNote');
+    host.textContent = ''; note.textContent = 'Lade …';
+    var j = await kapi('versions');
+    if (!j.ok) { note.textContent = j.status === 0 ? 'Keine Verbindung zum Server.' : 'Das ging nicht: ' + (j.err || 'unbekannt'); return; }
+    if (!j.versions || !j.versions.length) { note.textContent = 'Noch keine früheren Stände. Der erste entsteht, wenn sich dein Konto-Stand das nächste Mal ändert.'; return; }
+    note.textContent = 'Tippe auf einen Stand, um ihn zurückzuholen. Der jetzige bleibt gesichert.';
+    j.versions.forEach(function (v) {
+      var b = el('button', 'vrit'); b.type = 'button'; b.dataset.id = v.id; b.dataset.n = v.cards; b.dataset.t = vrDate(v.ts);
+      b.appendChild(el('b', null, vrDate(v.ts))); b.appendChild(el('span', null, v.cards + ' Karten'));
+      host.appendChild(b);
+    });
+  }
+  $('vrList').addEventListener('click', function (e) {
+    var b = e.target.closest('.vrit'); if (!b) return;
+    var id = +b.dataset.id;
+    confirmDlg('Stand zurückholen', 'Der Stand vom ' + b.dataset.t + ' mit ' + b.dataset.n + ' Karten ersetzt den jetzigen auf dem Konto und auf diesem Gerät. Der jetzige Stand bleibt als früherer Stand erhalten.', async function () {
+      if (K.busy) { toast('Der Abgleich läuft gerade. Bitte gleich noch einmal.'); return; }
+      if (K.timer && !K.paused) await kPush(true);   // wartende Änderungen erst senden, damit sie in der Sicherung des jetzigen Standes stehen
+      var r = await kapi('restore', { id: id });
+      if (!r.ok) { toast(r.status === 0 ? 'Keine Verbindung zum Server.' : (r.err || 'Das ging nicht.')); return; }
+      K.rev = r.rev; K.paused = false; kTake(r.data);
+      K.sentHash = hsh(snapshot()); K.since = 0; kSave(kBaseOf(snapshot()));
+      toast('Früherer Stand ist wieder da');
+      accView('account', 'Der frühere Stand ist wieder da.');
+    }, 'Zurückholen', false, 'Abbrechen');
+  });
+  /* Fehlgeschlagen: Wiederholen mit wachsendem Abstand (30 s, 1, 2, 4 … höchstens 10 Minuten, leicht gestreut), damit ein Ausfall den Server nicht zusätzlich belastet.
+     Kommt das Netz zurück ('online'), wird sofort neu versucht. Eine abgelaufene Anmeldung (401) wird nicht ewig wiederholt. */
+  function kRetry(fn, j) {
+    if (j && j.status === 401) { K.user = null; K.state = ''; toast('Bitte melde dich neu an.'); return; }
+    K.fails = (K.fails || 0) + 1;
+    var d = Math.min(600000, 30000 * Math.pow(2, K.fails - 1)) * (0.8 + Math.random() * 0.4);
+    if (j && j.retry) d = Math.max(d, j.retry * 1000 * (1 + Math.random() * 0.3));
+    K.state = (j && j.status === 0 ? 'Keine Verbindung. ' : 'Abgleich fehlgeschlagen: ' + ((j && j.err) || 'unbekannt') + '. ') + 'Neuer Versuch in ' + (d < 90000 ? Math.round(d / 1000) + ' s' : Math.round(d / 60000) + ' min') + '.';
+    clearTimeout(K.timer); K.timer = setTimeout(function () { K.timer = null; fn(); }, d);
+  }
+  window.addEventListener('online', function () {
+    if (!K.user || K.paused || K.busy || !K.fails) return;
+    K.fails = 0; clearTimeout(K.timer); K.timer = null; kSync();
+  });
+  /* Zu viele Daten: nicht still scheitern, sondern aktiv zum Sichern auffordern */
+  /* Nur die Änderungen seit dem letzten gemeinsamen Stand (Karten, Löschungen, Protokolltage, Rubriken, Farben, Optionen).
+     Gebraucht beim Schließen des Tabs, wenn der ganze Stand nicht in einen Hintergrund-Aufruf (höchstens 64 KB) passt. */
+  function kPatch(snap) {
+    var B = K.base; if (!B) return null;
+    var d = parseData({ cards: snap.cards, cats: snap.cats, log: snap.log, colors: snap.colors }), p = { cards: [], del: [], log: {}, cfg: {} }, seen = {};
+    d.cards.forEach(function (c) { seen[c.id] = 1; var b = B.cards[c.id]; if (!b || b[0] !== cContent(c) || b[1] !== cState(c)) p.cards.push(c); });
+    Object.keys(B.cards).forEach(function (id) { if (!seen[id]) p.del.push(id); });
+    Object.keys(d.log).forEach(function (k) { var l = d.log[k], b = B.log[k]; if (!b || b[0] !== l.n || b[1] !== l.ok || b[2] !== (l.c || []).length) p.log[k] = l; });
+    if (JSON.stringify(d.cats) !== JSON.stringify(B.cats)) p.cats = d.cats;
+    if (JSON.stringify(d.colors || {}) !== JSON.stringify(B.colors || {})) p.colors = d.colors || {};
+    Object.keys(snap.cfg || {}).forEach(function (k) { if (B.cfg[k] !== hsh(snap.cfg[k])) p.cfg[k] = snap.cfg[k]; });
+    return p;
+  }
+  function kTooBig() {
+    K.state = 'Zu viele Daten für das Konto. Sichere deine Karten mit „Karten speichern“ und verkleinere Bilder.'; kUI();
+    if (!K.bigShown) { K.bigShown = true; toast('Deine Karten sind zu groß fürs Konto. Bitte jetzt mit „Karten speichern“ sichern. Bilder verkleinern hilft.'); }
   }
   async function kPush(quiet) {
     clearTimeout(K.timer); K.timer = null;
     if (!K.user || K.paused) return;
     if (K.busy) { K.again = true; return; }
-    var body = JSON.stringify({ rev: K.rev, data: snapshot() });
-    if (body.length > 7500000) { K.state = 'Zu viele Daten für das Konto. Bilder verkleinern oder Karten löschen.'; kUI(); return; }
+    K.since = 0;
+    var snap = snapshot(), h = hsh(snap);
+    if (h === K.sentHash) { K.state = kOkText(); kUI(); return; }   // seit dem letzten Senden nichts geändert
+    if (kShrinkStop(snap, quiet)) return;
+    var body = JSON.stringify({ rev: K.rev, data: snap });
+    K.len = body.length;
+    if (body.length > 7500000) { kTooBig(); return; }
     K.busy = true;
+    kPend(snap);
     var j = await kapi('save', body);
     K.busy = false;
-    if (j.ok) { K.rev = j.rev; K.state = 'Gespeichert um ' + hhmm(); }
-    else if (j.status === 409) { K.rev = j.rev; K.paused = true; if (!quiet) kAsk('conflict'); }
-    else if (j.status === 401) { K.user = null; K.state = ''; toast('Bitte melde dich neu an.'); }
-    else { K.state = 'Abgleich fehlgeschlagen: ' + (j.err || 'unbekannt'); K.timer = setTimeout(function () { K.timer = null; kPush(); }, 30000); }
+    if (j.ok) { K.rev = j.rev; K.sentHash = h; K.state = kOkText(); kSave(kBaseOf(snap)); }
+    else if (j.status === 409) { K.rev = j.rev; kUI(); return kSync(); }
+    else kRetry(kPush, j);
     kUI();
     if (K.again) { K.again = false; scheduleSync(); }
   }
@@ -2840,25 +3120,37 @@
     } finally { K.pulling = false; }
     K.state = 'Konto-Stand geladen um ' + hhmm(); kUI();
   }
-  async function kPull() {
-    var j = await kapi('data');
-    if (!j.ok) { K.state = 'Abgleich fehlgeschlagen: ' + (j.err || 'unbekannt'); kUI(); return; }
-    var d = j.data;
-    if (!d) { K.rev = 0; if (hasLocal()) await kPush(); else { K.state = 'Das Konto ist noch leer.'; kUI(); } return; }
-    if (!hasLocal()) { K.rev = j.rev; kTake(d); toast('Konto-Stand geladen'); return; }
-    if (j.rev === K.rev) { await kPush(); return; }
-    if (norm(d) === norm(snapshot())) { K.rev = j.rev; K.state = 'Alles aktuell um ' + hhmm(); kUI(); return; }
-    K.rev = j.rev; K.paused = true; K.srvCount = d.cards.length;
-    kAsk('first');
-  }
+  async function kPull() { K.rev = kLoadBase(); K.sentHash = ''; K.since = 0; await kSync(); }
   async function kPoll() {
     if (!K.user || K.paused || K.busy || K.pulling || document.hidden) return;
-    var j = await kapi('data');
-    if (!j.ok || !j.data || j.rev === K.rev) return;
-    if (K.timer || !hasLocal()) { if (K.timer) { K.rev = j.rev; K.paused = true; K.srvCount = j.data.cards.length; kAsk('conflict'); } else { K.rev = j.rev; kTake(j.data); toast('Neuer Stand vom Konto geladen'); } return; }
-    K.rev = j.rev; kTake(j.data); toast('Neuer Stand vom Konto geladen');
+    var j = await kapi('rev');   // nur die Nummer, nicht den ganzen Stand
+    if (!j.ok || !j.rev || j.rev === K.rev) { if (j.ok && !K.timer) K.fails = 0; return; }
+    await kSync();
+  }
+  /* Statuszeile nach erfolgreichem Abgleich: „Automatisch abgeglichen“, nur nach Klick auf „Jetzt abgleichen“ „Abgeglichen“. */
+  function kOkText() { var t = (K.manual ? 'Abgeglichen um ' : 'Automatisch abgeglichen um ') + hhmm(); K.manual = false; return t; }
+  /* Löschschutz: Fehlen hier plötzlich fast alle Karten gegenüber dem letzten gemeinsamen Stand (z. B. nach gelöschten Browserdaten oder einem Fehler),
+     wird nicht still ins Konto geschrieben. Erst fragen. Der Konto-Stand bleibt als früherer Stand gesichert. */
+  function kShrinkN(snap) {   // 0 = alles gut, sonst die Kartenzahl des letzten gemeinsamen Stands
+    if (!K.base) return 0;
+    var B = Object.keys(K.base.cards).length;
+    return (B >= 10 && snap.cards.length < B * 0.4) ? B : 0;
+  }
+  function kShrinkStop(snap, quiet) {
+    if (K.okShrink) { K.okShrink = false; return false; }
+    var B = kShrinkN(snap); if (!B) return false;
+    K.paused = true; K.state = 'Wartet auf deine Entscheidung'; K.shrinkAsk = [B, snap.cards.length]; kUI();
+    if (!quiet && !document.hidden) kAskShrink(B, snap.cards.length);
+    return true;
+  }
+  function kAskShrink(B, n) {
+    $('syTitle').textContent = 'Viele Karten gelöscht?';
+    $('syText').textContent = 'Hier sind ' + n + ' Karten, im Konto lagen ' + B + '. Soll das Konto auch kleiner werden, oder willst du den Konto-Stand laden? Der Konto-Stand bleibt unter „Frühere Stände“ gesichert.';
+    $('syServer').textContent = 'Konto-Stand laden'; $('syLocal').textContent = 'Im Konto auch löschen'; $('syLater').textContent = 'Später';
+    openNM($('syncDlg'));
   }
   function kAsk(kind) {
+    $('syTitle').textContent = 'Welcher Stand gilt?'; $('syServer').textContent = 'Konto-Stand laden'; $('syLocal').textContent = 'Diesen Stand hochladen';
     var n = K.srvCount, m = db.cards.length;
     $('syText').textContent = (kind === 'first'
       ? 'Auf dem Konto liegen ' + n + ' Karten, hier sind ' + m + '. Welcher Stand soll gelten?'
@@ -2871,11 +3163,26 @@
     $('syncDlg').close();
     var j = await kapi('data');
     if (!j.ok || !j.data) { K.state = 'Abgleich fehlgeschlagen'; kUI(); return; }
-    K.rev = j.rev; K.paused = false; kTake(j.data); toast('Konto-Stand geladen');
+    K.rev = j.rev; K.paused = false; K.shrinkAsk = null; kTake(j.data); toast('Konto-Stand geladen');
   });
-  $('syLocal').addEventListener('click', function () { $('syncDlg').close(); K.paused = false; kPush(); });
-  $('syLater').addEventListener('click', function () { $('syncDlg').close(); });
-  document.addEventListener('visibilitychange', function () { if (!document.hidden) kPoll(); });
+  $('syLocal').addEventListener('click', function () { $('syncDlg').close(); K.paused = false; K.okShrink = true; K.shrinkAsk = null; kPush(); });
+  $('syLater').addEventListener('click', function () { $('syncDlg').close(); if (K.paused) toast('Abgleich pausiert, bis du entscheidest.'); });
+  /* Tab im Hintergrund oder geschlossen: Wartendes sofort senden. Beim Schließen nur, wenn es klein genug für einen Sendevorgang im Hintergrund ist, sonst bleibt es lokal und geht beim nächsten Start raus. */
+  document.addEventListener('visibilitychange', function () { if (document.hidden) { if (K.timer && K.user && !K.paused && !K.busy) kPush(true); } else { if (K.shrinkAsk && K.paused && !$('syncDlg').open) kAskShrink(K.shrinkAsk[0], K.shrinkAsk[1]); kPoll(); } });
+  window.addEventListener('pagehide', function () {
+    if (!K.timer || !K.user || K.paused || K.busy || K.mock) return;
+    try {
+      var snap = snapshot(), body = JSON.stringify({ rev: K.rev, data: snap }), act = 'save';
+      if (hsh(snap) === K.sentHash || kShrinkN(snap)) return;   // und nicht senden, wenn fast alle Karten fehlen: erst fragen
+      if (body.length > 60000) {   // zu groß für einen Hintergrund-Aufruf: nur die Änderungen senden
+        var pt = K.rev > 0 && kPatch(snap);
+        body = pt && JSON.stringify({ rev: K.rev, patch: pt }); act = 'patch';
+        if (!body || body.length > 60000) return;   // auch das passt nicht: bleibt lokal und geht beim nächsten Start raus
+      }
+      kPend(snap);
+      fetch(kurl(act), { method: 'POST', keepalive: true, credentials: 'same-origin', referrerPolicy: 'no-referrer', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': K.csrf }, body: body });
+    } catch (e) {}
+  });
   setInterval(kPoll, 60000);
 
   /* Kontaktformular */
@@ -2933,6 +3240,7 @@
   function proApply() {
     if (current === 'opts') renderOptions();
     typeState(); syncPlayer(); try { updateUI(); } catch (e) {}
+    if (PRO.profile) try { PRO.profile(true); } catch (e) {}
   }
   /* Nach der ersten Anmeldung auf diesem Gerät: einmal kurz zeigen, wo die zusätzlichen Einstellungen sind */
   function proWelcome() {
@@ -3036,7 +3344,7 @@
   function landing() {
     var m = CFG.start.seite;
     if (m === 'aus') return;
-    if (/[?&](verify|reset)=/.test(location.search)) { landShown = true; return; }
+    if (/[?&](verify|reset|app)=/.test(location.search)) { landShown = true; return; }   // app=1: Link von den Infoseiten geht direkt zum Lernen
     try { if (sessionStorage.getItem('kartenbox-neuladen')) { sessionStorage.removeItem('kartenbox-neuladen'); landShown = true; return; } } catch (e) {}
     var today = dayKey(), seen = '';
     try { seen = localStorage.getItem(LAND_KEY) || ''; } catch (e) {}
@@ -3130,10 +3438,18 @@
   renderFile();
   fileRestore();
   landing();
+  document.body.classList.add('kd-ready');   // Fußzeile erst zeigen, wenn die Seite aufgebaut ist: sonst springt sie nach unten (Layout-Verschiebung)
   try {
     var sicht = sessionStorage.getItem('kartenbox-sicht'); sessionStorage.removeItem('kartenbox-sicht');   // nach dem Sprachwechsel dort weitermachen, wo man war
     if (sicht === 'land') { landShown = true; landReveal(); $('landing').showModal(); }
     else if (sicht && sicht !== 'study' && $('view-' + sicht)) show(sicht);
   } catch (e) {}
   kStart();
+  }
+  if (LANG === 'en' && !EN_DICT && EN_SRC) {
+    var sc = document.createElement('script'); sc.src = EN_SRC;
+    sc.onload = function () { EN_DICT = window.KB_EN || null; go(); };
+    sc.onerror = function () { go(); };   // ohne Wörterbuch bleibt es Deutsch, die App läuft trotzdem
+    document.head.appendChild(sc);
+  } else go();
 })();

@@ -67,3 +67,5 @@ footer a:focus-visible { outline: 3px solid var(--accent, #1d3fc4); outline-offs
   .more a { display: inline-block; padding: 12px 0; }
 }
 @media (max-width: 370px) { .brand b { display: none; } }
+
+.neu { display: inline-block; margin: 0 8px; padding: 1px 9px 0; font: 700 .72rem/1.6 var(--slab); letter-spacing: .08em; text-transform: uppercase; color: #fff; background: #c8412f; border: 2px solid #8f2a1c; border-radius: 4px; transform: rotate(-4deg); vertical-align: 2px; }

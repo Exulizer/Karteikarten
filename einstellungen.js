@@ -1,5 +1,5 @@
 /*
-  Kartenbox – Einstellungen
+  KarteiDeck – Einstellungen
 
   Diese Datei liegt neben karteikarten.html.
   Werte ändern, Datei speichern, Seite neu laden. Fertig.
@@ -49,5 +49,26 @@ window.KARTENBOX_EINSTELLUNGEN = {
 
   update: {
     pruefen: true     // true: Die App fragt online höchstens einmal am Tag bei GitHub nach einer neuen Version. false: nie
+  },
+
+  start: {
+    seite: "immer"    // Startseite beim Öffnen: "immer" | "taeglich" (einmal am Tag) | "einmal" (nur beim ersten Mal) | "aus"
+  },
+
+  konto: {
+    api: "",  // Pfad zur Konto-Schnittstelle (PHP). Läuft nur über http(s), nicht aus einer lokalen Datei.
+    test: false             // true: Wenn kein PHP-Server antwortet, gibt es ein Test-Konto nur in diesem Browser (zum Ausprobieren). Vor dem Livegang auf false.
+  },
+
+  seite: {
+    url: ""           // Adresse der fertigen Seite ohne Schrägstrich am Ende, zum Beispiel "https://karteideck.de". Wird für Canonical, Vorschaubild, robots.txt und sitemap.xml gebraucht.
+  },
+
+  anbieter: {         // Angaben für Impressum und Datenschutz. Leer gelassen steht dort "[Angabe fehlt]".
+    name: "",         // Vor- und Nachname (bei Firma: Firmenname und Vertreter)
+    strasse: "",      // Straße und Hausnummer
+    ort: "",          // PLZ und Ort
+    email: "",      // E-Mail für Anfragen
+    hoster: ""        // Name und Sitz des Hosters, zum Beispiel "Hetzner Online GmbH, Gunzenhausen"
   }
 };

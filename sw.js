@@ -1,6 +1,6 @@
 /* KarteiDeck Service Worker: legt die App beim ersten Besuch im Cache, danach läuft sie offline. */
-var CACHE = 'karteideck-v4';
-var FILES = ['./', './karteikarten.html', './einstellungen.js', './app.js', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
+var CACHE = 'karteideck-v5';
+var FILES = ['./', './karteikarten.html', './einstellungen.js', './app.js', './en.js', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) {
     return Promise.all(FILES.map(function (f) { return c.add(f).catch(function () {}); }));   // fehlende optionale Dateien stören nicht

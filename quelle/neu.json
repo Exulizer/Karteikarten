@@ -1,40 +1,134 @@
 [
- {"v": "1.4.0", "datum": "2026-11-20",
-  "de": ["Handy: Die Leiste hat fünf Tabs. Nur der aktive zeigt seinen Namen, die Tippflächen sind größer. Rubriken liegen als Umschalter im Karten-Tab.",
-         "Sprachknopf oben neben „Demo“. Der Wechsel bleibt auf der Seite, auf der du bist.",
-         "Fortschritt: „Demo ansehen“ gibt es auch mit eigenen Daten, „Demo beenden“ bringt dich zurück.",
-         "Optionen: Die Überschriften der Gruppen sind hervorgehoben.",
-         "Neue Seite „Was ist neu“."],
-  "en": ["Phone: the bar has five tabs. Only the active one shows its name, and the tap targets are bigger. Categories sit in a switch inside the Cards tab.",
-         "Language button at the top, next to “Demo”. Switching keeps you on the page you are on.",
-         "Progress: “Watch demo” is also there when you have your own data, “End demo” takes you back.",
-         "Options: the group headings stand out.",
-         "New “What’s new” page."]},
- {"v": "1.3.0", "datum": "2026-11-19",
-  "de": ["Neu mit Konto: Tab „Fortschritt“ statt Statistik. Tag, Monat und Jahr, Tagesziel mit Siegel, Kalender mit Stempeln.",
-         "Pro Rubrik siehst du, wie viele Karten du gelernt hast, wie oft du sie wusstest und welche du gemeistert hast.",
-         "Ohne Konto zeigt der Tab eine Info, mit leerem Konto eine Demo (2 Minuten).",
-         "KarteiDeck gibt es jetzt komplett auf Englisch: App, Themenseiten, Hilfe, Impressum und Datenschutz."],
-  "en": ["New with an account: a “Progress” tab replaces the statistics. Day, month and year, a daily goal with a seal, a calendar with stamps.",
-         "For each category you see how many cards you studied, how often you got them right and which ones you mastered.",
-         "Without an account the tab shows an info card, with an empty account a 2-minute demo.",
-         "KarteiDeck is now fully available in English: app, topic pages, help, legal notice and privacy."]},
- {"v": "1.2.0", "datum": "2026-11-11",
-  "de": ["Lückentext: Knopf „Lücke“ beim Anlegen und Bearbeiten. Mit Konto gibt es zusätzlich eine Wortbank zum Antippen.",
-         "Import prüft das Dateiformat vor dem Lesen (CSV, TSV, TXT, JSON bis 5 MB).",
-         "Sehr große Bildschirme: Blatt, Karten und Zubehör wachsen mit.",
-         "Kleinere Seite durch verkleinerten Code."],
-  "en": ["Cloze cards: a “Gap” button when you create or edit a card. With an account there is also a word bank to tap.",
-         "Import checks the file format before reading (CSV, TSV, TXT, JSON up to 5 MB).",
-         "Very large screens: the sheet, cards and extras scale up.",
-         "A smaller page thanks to minified code."]},
- {"v": "1.1.0", "datum": "",
-  "de": ["Neuer Name KarteiDeck mit eigenem Logo.",
-         "Lückentext, Antwort tippen, rückwärts lernen, Prüfung mit Note, Vorlesen.",
-         "Bilder, Tags und Suche. Import aus CSV, Anki und Quizlet, Export und Drucken.",
-         "Rubriken mit eigenen Farben."],
-  "en": ["New name KarteiDeck with its own logo.",
-         "Cloze cards, typed answers, reverse study, exam with grade, read aloud.",
-         "Images, tags and search. Import from CSV, Anki and Quizlet, export and print.",
-         "Categories with their own colours."]}
+ {
+  "v": "1.7.0",
+  "datum": "2026-11-22",
+  "de": [
+   "Sicherer beim Speichern: Schließt du den Tab, sichert die App auch große Konten noch schnell. Stehen plötzlich viel weniger Karten da als im Konto, fragt sie erst nach, bevor sie etwas löscht.",
+   "Fortschritt: Du siehst, was in den nächsten 7 Tagen fällig wird, und deine schwersten Karten. Tippe eine an, um sie zu bearbeiten.",
+   "Fortschritt im Jahr: Jeder Tag ist ein Kästchen, je dunkler, desto mehr hast du geübt.",
+   "Serie: Ein freier Tag pro Woche unterbricht deine Serie nicht mehr.",
+   "Anmelden: Ist deine Adresse noch nicht bestätigt, kannst du die Mail direkt erneut senden lassen.",
+   "Konto: Die Knöpfe stehen übersichtlich nebeneinander. Oben steht jetzt, wann zuletzt abgeglichen wurde, zum Beispiel „Automatisch abgeglichen um 18:20“.",
+   "Behoben: In seltenen Fällen konnten Einstellungen und Abgleichsdaten am selben Ort landen. Das ist repariert, vorhandene Einstellungen werden beim Start zurückgeholt.",
+   "Die App lädt schneller: Die englischen Texte werden nur noch geladen, wenn du Englisch nutzt."
+  ],
+  "en": [
+   "Safer saving: When you close the tab, the app still saves even large accounts quickly. If far fewer cards show up than in your account, it asks before deleting anything.",
+   "Progress: You see what is due in the next 7 days and your hardest cards. Tap one to edit it.",
+   "Progress over the year: Every day is a square, the darker, the more you practised.",
+   "Streak: One free day per week no longer breaks your streak.",
+   "Sign in: If your address is not confirmed yet, you can have the mail sent again right there.",
+   "Account: The buttons now sit neatly side by side. At the top you see when it last synced, for example \"Synced automatically at 18:20\".",
+   "Fixed: In rare cases settings and sync data could end up in the same place. This is repaired, existing settings are restored on start.",
+   "The app loads faster: The English texts are only loaded when you use English."
+  ]
+ },
+ {
+  "v": "1.6.0",
+  "datum": "2026-11-20",
+  "de": [
+   "Profilbilder: Es gibt 10 Bilder, von Neuling bis Legende. Das Bild wechselt von selbst, wenn du ein Ziel erreichst, und ein Zettel sagt dir kurz, warum.",
+   "Die ersten Stufen schaffst du an den ersten Tagen. Die letzten brauchen Monate. Bei den höchsten zählt ein Anteil deiner Karten (bis 80 %), so geht es auch mit kleinen Kartensätzen.",
+   "Du siehst dein Bild in Fortschritt, oben neben dem Konto und im Konto-Fenster. Erreichte Stufen bleiben.",
+   "Konto-Abgleich: Hast du auf zwei Geräten geübt, führt die App beides ohne Rückfrage zusammen. Nichts geht verloren."
+  ],
+  "en": [
+   "Profile pictures: 10 pictures, from Newcomer to Legend. Your picture changes by itself when you reach a goal, and a note tells you why.",
+   "The first levels take a few days. The last ones take months. The highest levels count a share of your cards (up to 80 %), so small decks work too.",
+   "You see your picture in Progress, next to the account button and in the account window. Levels you reached stay.",
+   "Account sync: If you practised on two devices, the app merges both without asking. Nothing is lost."
+  ]
+ },
+ {
+  "v": "1.5.0",
+  "datum": "2026-11-20",
+  "de": [
+   "Konto neu gestaltet: Anmelden, Registrieren und Konto sehen jetzt aus wie eine Karteikarte, mit Reitern, Zeilen, Lochung und einem „Angemeldet“-Stempel.",
+   "Felder liegen auf den Zeilen und füllen sich beim Antippen mit einer blauen Linie."
+  ],
+  "en": [
+   "Account redesigned: log in, sign up and account now look like an index card, with tabs, ruled lines, punch holes and a “Logged in” stamp.",
+   "Fields sit on the lines and fill with a blue line when you tap them."
+  ]
+ },
+ {
+  "v": "1.4.1",
+  "datum": "2026-11-20",
+  "de": [
+   "Bessere Lesbarkeit: Felder, Knöpfe und Schalter haben einen deutlicheren Rand.",
+   "Fortschritt nach Rubriken: „gewusst“ ist jetzt blau, „nochmal“ orange und gestreift. Das ist auch bei Rot-Grün-Schwäche gut zu unterscheiden.",
+   "Warnhinweise an Karten und im Tipp-Modus sind besser lesbar."
+  ],
+  "en": [
+   "Easier to read: fields, buttons and switches have a clearer border.",
+   "Progress by category: “known” is now blue, “again” orange with stripes. Easy to tell apart with red-green colour blindness too.",
+   "Warnings on cards and in type mode are easier to read."
+  ]
+ },
+ {
+  "v": "1.4.0",
+  "datum": "2026-11-20",
+  "de": [
+   "Handy: Die Leiste hat fünf Tabs. Nur der aktive zeigt seinen Namen, die Tippflächen sind größer. Rubriken liegen als Umschalter im Karten-Tab.",
+   "Sprachknopf oben neben „Demo“. Der Wechsel bleibt auf der Seite, auf der du bist.",
+   "Fortschritt: „Demo ansehen“ gibt es auch mit eigenen Daten, „Demo beenden“ bringt dich zurück.",
+   "Optionen: Die Überschriften der Gruppen sind hervorgehoben.",
+   "Neue Seite „Was ist neu“."
+  ],
+  "en": [
+   "Phone: the bar has five tabs. Only the active one shows its name, and the tap targets are bigger. Categories sit in a switch inside the Cards tab.",
+   "Language button at the top, next to “Demo”. Switching keeps you on the page you are on.",
+   "Progress: “Watch demo” is also there when you have your own data, “End demo” takes you back.",
+   "Options: the group headings stand out.",
+   "New “What’s new” page."
+  ]
+ },
+ {
+  "v": "1.3.0",
+  "datum": "2026-11-19",
+  "de": [
+   "Neu mit Konto: Tab „Fortschritt“ statt Statistik. Tag, Monat und Jahr, Tagesziel mit Siegel, Kalender mit Stempeln.",
+   "Pro Rubrik siehst du, wie viele Karten du gelernt hast, wie oft du sie wusstest und welche du gemeistert hast.",
+   "Ohne Konto zeigt der Tab eine Info, mit leerem Konto eine Demo (2 Minuten).",
+   "KarteiDeck gibt es jetzt komplett auf Englisch: App, Themenseiten, Hilfe, Impressum und Datenschutz."
+  ],
+  "en": [
+   "New with an account: a “Progress” tab replaces the statistics. Day, month and year, a daily goal with a seal, a calendar with stamps.",
+   "For each category you see how many cards you studied, how often you got them right and which ones you mastered.",
+   "Without an account the tab shows an info card, with an empty account a 2-minute demo.",
+   "KarteiDeck is now fully available in English: app, topic pages, help, legal notice and privacy."
+  ]
+ },
+ {
+  "v": "1.2.0",
+  "datum": "2026-11-11",
+  "de": [
+   "Lückentext: Knopf „Lücke“ beim Anlegen und Bearbeiten. Mit Konto gibt es zusätzlich eine Wortbank zum Antippen.",
+   "Import prüft das Dateiformat vor dem Lesen (CSV, TSV, TXT, JSON bis 5 MB).",
+   "Sehr große Bildschirme: Blatt, Karten und Zubehör wachsen mit.",
+   "Kleinere Seite durch verkleinerten Code."
+  ],
+  "en": [
+   "Cloze cards: a “Gap” button when you create or edit a card. With an account there is also a word bank to tap.",
+   "Import checks the file format before reading (CSV, TSV, TXT, JSON up to 5 MB).",
+   "Very large screens: the sheet, cards and extras scale up.",
+   "A smaller page thanks to minified code."
+  ]
+ },
+ {
+  "v": "1.1.0",
+  "datum": "",
+  "de": [
+   "Neuer Name KarteiDeck mit eigenem Logo.",
+   "Lückentext, Antwort tippen, rückwärts lernen, Prüfung mit Note, Vorlesen.",
+   "Bilder, Tags und Suche. Import aus CSV, Anki und Quizlet, Export und Drucken.",
+   "Rubriken mit eigenen Farben."
+  ],
+  "en": [
+   "New name KarteiDeck with its own logo.",
+   "Cloze cards, typed answers, reverse study, exam with grade, read aloud.",
+   "Images, tags and search. Import from CSV, Anki and Quizlet, export and print.",
+   "Categories with their own colours."
+  ]
+ }
 ]

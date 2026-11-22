@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kontakt – KarteiDeck</title>
+<meta name="description" content="Kontaktformular von KarteiDeck">
+<meta name="robots" content="noindex, follow">
+<meta name="theme-color" content="#c9a676">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="seiten.css">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="KarteiDeck">
+<meta property="og:locale" content="de_DE">
+<meta property="og:title" content="Kontakt – KarteiDeck">
+<meta property="og:description" content="Kontaktformular von KarteiDeck">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://karteideck.de/kontakt.html">
+<meta property="og:url" content="https://karteideck.de/kontakt.html">
+<meta property="og:image" content="https://karteideck.de/vorschau.png">
+<meta name="twitter:image" content="https://karteideck.de/vorschau.png">
+<link rel="alternate" hreflang="de" href="https://karteideck.de/kontakt.html">
+<link rel="alternate" hreflang="en" href="https://karteideck.de/en/contact.html">
+<link rel="alternate" hreflang="x-default" href="https://karteideck.de/kontakt.html">
+</head>
+<body>
+<div class="sheet">
+<header><a class="brand" href="./"><img src="logo.svg" width="40" height="40" alt=""><b>KarteiDeck</b></a><span class="hr"><a class="btn" href="en/contact.html" hreflang="en" lang="en">English</a><a class="btn" href="./">Zur App</a></span></header>
+<main>
+<h1>Kontakt</h1>
+<p>Frage, Fehler oder Idee? Schreib uns. Die Angaben gehen nur an uns und dienen der Antwort.</p>
+<form id="kf" data-api="api/index.php" novalidate>
+<label for="kname">Name</label><input type="text" id="kname" autocomplete="name" placeholder="Dein Name" maxlength="80" required>
+<label for="kmail">E-Mail</label><input type="email" id="kmail" autocomplete="email" placeholder="Für die Antwort" maxlength="190" required>
+<label for="kmsg">Nachricht</label><textarea id="kmsg" placeholder="Was möchtest du uns sagen?" maxlength="2000" rows="7" required></textarea>
+<input type="text" id="khp" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" placeholder="Nicht ausfüllen">
+<p class="err" id="kerr" role="alert"></p>
+<p class="hint">Mehr dazu in der <a href="datenschutz.html">Datenschutzerklärung</a>.</p>
+<button class="btn primary" type="submit" id="ksend">Senden</button>
+</form>
+<p id="kdone" role="status" hidden></p>
+<noscript><p>Für das Formular wird JavaScript gebraucht. Du erreichst uns auch per E-Mail: info@karteideck.de</p></noscript>
+
+</main>
+
+<footer><a href="./">Startseite</a><a href="impressum.html">Impressum</a><a href="kontakt.html">Kontakt</a><a href="datenschutz.html">Datenschutz</a><a href="neu.html">Was ist neu</a></footer>
+</div>
+<script src="kontakt.js"></script>
+</body>
+</html>

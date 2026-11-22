@@ -14,7 +14,9 @@ def _endict():   # Muster: längere zuerst, damit die genaueren gewinnen
     e = json.loads((d/'en.json').read_text(encoding='utf8'))
     e['pat'].sort(key=lambda p: -len(p[0]))
     return e
-js = js.replace('null /*EN_DICT*/', json.dumps(_endict(), ensure_ascii=False, separators=(',', ':')).replace('</', '<\\/'))
+_ENJ = json.dumps(_endict(), ensure_ascii=False, separators=(',', ':')).replace('</', '<\\/')
+assert js.count('null /*EN_SRC*/') == 1
+js = js.replace('/*NEUV*/', ver['version'])
 js = js.replace("'__VERSION__'", "'" + ver['version'] + "'")
 # Zusatzfunktionen: liegen als api/inc/pro.js auf dem Server und werden nur nach der Anmeldung ausgeliefert.
 # In die HTML kommen sie nur im Testmodus (konto.test) oder ohne Konto-System (keine api), sonst gäbe es dort keine Anmeldung.
@@ -103,13 +105,23 @@ def _mini_html(t):   # Nur Kommentare und Einrückung, Inhalt von script, style,
     t = re.sub(r'<!--(?!\[if).*?-->', '', t, flags=re.S)
     t = re.sub(r'\n[ \t]+', '\n', t); t = re.sub(r'\n{2,}', '\n', t)
     return re.sub(r'\x00(\d+)\x00', lambda m: keep[int(m.group(1))], t)
+_ext = bool(_url) and not _embed   # online: Skript als eigene Datei, damit die CSP ohne 'unsafe-inline' für Skripte auskommt
+if _ext:   # Englisch-Wörterbuch als eigene Datei, nur für Englisch geladen
+    _enjs = 'window.KB_EN=' + _ENJ + ';\n'
+    (root/'en.js').write_text(_enjs, encoding='utf8')
+    js = js.replace('null /*EN_SRC*/', "'en.js?v=" + hashlib.sha256(_enjs.encode('utf8')).hexdigest()[:10] + "'")
+    js = js.replace('null /*EN_DICT*/', 'null')
+else:
+    js = js.replace('null /*EN_DICT*/', _ENJ)
 _n0 = len(css) + len(js)
 css, js = _esb(css, 'css'), _esb(js, 'js')
 h = h.replace('<link rel="stylesheet" href="kartenbox.css">', '<style>\n'+css+'</style>')
-_ext = bool(_url) and not _embed   # online: Skript als eigene Datei, damit die CSP ohne 'unsafe-inline' für Skripte auskommt
 if _ext:
     (root/'app.js').write_text(js, encoding='utf8')
-    h = h.replace('<script src="kartenbox.js"></script>', '<script src="app.js?v=%s"></script>' % hashlib.sha256(js.encode('utf8')).hexdigest()[:10])
+    _v = hashlib.sha256(js.encode('utf8')).hexdigest()[:10]
+    h = h.replace('<script src="einstellungen.js"></script>\n', '', 1)
+    h = h.replace('<script src="kartenbox.js"></script>', '<script src="einstellungen.js"></script>\n<script src="app.js?v=%s"></script>' % _v)   # beide am Seitenende: blockieren den ersten Aufbau nicht, Reihenfolge bleibt (defer war im normalen Browser messbar schlechter)
+    h = h.replace('</head>', '<link rel="preload" href="app.js?v=%s" as="script">\n</head>' % _v, 1)   # Laden beginnt mit dem HTML, nicht erst am Seitenende (schnellerer Start)
 else:
     h = h.replace('<script src="kartenbox.js"></script>', '<script>\n'+js+'</script>')
 h = _mini_html(h)

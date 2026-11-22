@@ -1,0 +1,15 @@
+<?php
+// Kopiere diese Datei nach config.local.php und passe die Werte an. config.local.php gehört nicht ins Git.
+return [
+    'site_url'   => 'https://beispiel.de',       // ohne Schrägstrich am Ende
+    'mail_mode'  => 'php',                        // 'php' versendet über mail(), 'log' schreibt nur in data/mail.log
+    'mail_from'  => 'noreply@beispiel.de',        // Absender, am besten mit eigener Domain (SPF/DKIM beim Hoster einrichten)
+    'contact_to' => 'kontakt@beispiel.de',        // Empfänger des Kontaktformulars
+    // Datenbank statt Datei: schema.sql einspielen, dann:
+    // 'store'    => 'pdo',
+    // 'pdo_dsn'  => 'mysql:host=localhost;dbname=DATENBANK;charset=utf8mb4',
+    // 'pdo_user' => 'BENUTZER',
+    // 'pdo_pass' => 'PASSWORT',
+    // Daten außerhalb des Web-Ordners ablegen (empfohlen):
+    // 'data_dir' => '/pfad/ausserhalb/des/webroots/kartenbox-daten',
+];

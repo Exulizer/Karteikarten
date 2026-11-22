@@ -1,9 +1,9 @@
 {
-  "name": "Kartenbox",
-  "short_name": "Kartenbox",
-  "description": "Karteikarten lernen, offline und ohne Konto",
+  "name": "KarteiDeck",
+  "short_name": "KarteiDeck",
+  "description": "Karteikarten online lernen, auch offline. Kostenlos und ohne Werbung.",
   "lang": "de",
-  "start_url": "./karteikarten.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#c9a676",
